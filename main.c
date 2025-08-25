@@ -11,10 +11,58 @@ struct line {
   size_t len;
 };
 
+/*
+
+** keymaps **
+
+h - move left
+j - move down
+k - move up
+l - move right
+
+C-h - scroll left
+C-j - scroll down
+C-k - scroll up
+C-l - scroll right
+
+A-h - go to beginning of line
+A-j - go to last line
+A-k - go to first line
+A-l - go to end of line
+
+*/
+
 struct bee {
-  struct line *buf;
-  size_t buf_len;
-  unsigned char cursor_x, cursor_y;
+  // struct mode mode // TODO
+  struct line *buf; // buffer content
+  size_t buf_len; // buffer length
+  unsigned char cx, cy; // cursor position in the file
+  unsigned char cxx; // preferred column / goal column
+  unsigned char sx, sy; // screen position, sy is the first line we print
+  /*
+  invariant:
+  y:
+  0 <= sy <= cy < buf_len
+  cy - xy < screen_height // the distance between cy and xy must fit into the screen
+    where screen_height = tb_height - 1 (because of the footer)
+  x:
+  0 <= sx <= cx < line_len(cy)
+  cx - sx < screen_width // the distance between cx and sx must fit into the screen
+  sx + screen_width +1 <= max(line_len(0..buf_len-1)) // in practice give a little more room
+
+  after moving / updating cy:
+  if cy < 0 => cy := 0 (after move up)
+  if cy >= buf_len => cy := buf_len -1 (after move down)
+  if cy < sy => sy := cy (after move up)
+  if cy >= sy + screen_height => sy := cy - screen_height +1 (after move down)
+
+  after scrolling / updating sy:
+  if sy < 0 => sy := 0 (after scroll up)
+  if sy > buf_len => sy := buf_len -1 (after scroll down)
+  if sy > cy => cy := sy (after scroll down)
+  if sy <= cy - screen_height => cy := sy + screen_height -1 (after scroll up)
+
+  */
 };
 
 int main(int argc, char **argv){
@@ -66,20 +114,41 @@ int main(int argc, char **argv){
     j += linelen+1;
   }
 
+  // start cursor
+  bee.cx = bee.cy = 0;
+
   tb_init();
 
-  // print file
-  for(int i=0; i<tb_height() -1; i++){
-    tb_print(0, i, TB_WHITE, TB_BLACK, bee.buf[i].data);
-  }
-  // footer
-  char *footer_format = "\"%s\"  [=%d] L%d C%d";
-  tb_printf(0, tb_height() - 1, TB_BLACK, TB_WHITE, footer_format, argv[1], nlines, 0, 0);
-  tb_present();
-
   struct tb_event ev;
-  tb_poll_event(&ev);
+  const char *footer_format = "\"%s\"  [=%d] L%d C%d";
+  while(1){
+    // print file
+    for(int i=0; i<tb_height() -1; i++){
+      tb_print(0, i, TB_WHITE, TB_BLACK, bee.buf[i].data);
+    }
+    // print footer
+    tb_printf(0, tb_height() - 1, TB_BLACK, TB_WHITE, 
+              footer_format, argv[1], nlines, bee.cy, bee.cx);
 
+    // print cursor
+    tb_set_cursor(bee.cx, bee.cy);
+
+    tb_present();
+
+    tb_poll_event(&ev);
+    if(ev.ch == 'q')
+      break;
+    switch(ev.ch){
+    case 'h':
+      bee.cx--; break;
+    case 'j':
+      bee.cy++; break;
+    case 'k':
+      bee.cy--; break;
+    case 'l':
+      bee.cx++; break;
+    }
+  }
   tb_shutdown();
 
   return 0;
