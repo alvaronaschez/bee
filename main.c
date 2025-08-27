@@ -6,13 +6,7 @@
 #include <stdlib.h>
 #include <string.h>
 
-struct line {
-  char *data;
-  size_t len;
-};
-
 /*
-
 ** keymaps **
 
 h - move left
@@ -29,17 +23,20 @@ A-h - go to beginning of line
 A-j - go to last line
 A-k - go to first line
 A-l - go to end of line
-
 */
 
-struct bee {
-  // struct mode mode // TODO
-  struct line *buf; // buffer content
-  size_t buf_len; // buffer length
-  unsigned char cx, cy; // cursor position in the file
-  unsigned char cxx; // preferred column / goal column
-  unsigned char sx, sy; // screen position, sy is the first line we print
-  /*
+enum mode {
+  NORMAL, INSERT, COMMAND
+};
+
+char *mode_label[] = {"N", "I", "C"};
+
+struct line {
+  char *data;
+  int len;
+};
+
+/*
   invariant:
   y:
   0 <= sy <= cy < buf_len
@@ -61,8 +58,15 @@ struct bee {
   if sy > buf_len => sy := buf_len -1 (after scroll down)
   if sy > cy => cy := sy (after scroll down)
   if sy <= cy - screen_height => cy := sy + screen_height -1 (after scroll up)
+*/
+struct bee {
+  enum mode mode;
+  struct line *buf; // buffer content
+  int buf_len; // buffer length
+  int cx, cy; // cursor position in the file
+  int cxx; // preferred column / goal column
+  int sx, sy; // screen position, sy is the first line of the file we print
 
-  */
 };
 
 int main(int argc, char **argv){
@@ -73,65 +77,72 @@ int main(int argc, char **argv){
   }
 
   struct bee bee;
+  bee.mode = NORMAL;
+  bee.cx = bee.cy = bee.sx = bee.sy = 0;
 
-  // read file
-  FILE *fp = fopen(argv[1], "r");
-  assert(fp);
+  /* read file */
+  {
+    FILE *fp = fopen(argv[1], "r");
+    assert(fp);
 
-  int res;
-  res = fseek(fp, 0, SEEK_END);
-  assert(res == 0);
-  long fsize = ftell(fp);
-  assert(fsize >= 0);
-  rewind(fp);
+    int res = fseek(fp, 0, SEEK_END);
+    assert(res == 0);
+    long fsize = ftell(fp);
+    assert(fsize >= 0);
+    rewind(fp);
 
-  char *fcontent = (char*) malloc(fsize * sizeof(char));
-  fread(fcontent, 1, fsize, fp);
-  res = fclose(fp);
-  assert(res == 0);
+    char *fcontent = (char*) malloc(fsize * sizeof(char));
+    fread(fcontent, 1, fsize, fp);
+    res = fclose(fp);
+    assert(res == 0);
 
-  // count lines in file
-  size_t nlines= 0;
-  for(size_t i = 0; i<(size_t)fsize; i++)
-    if(fcontent[i] == '\n') nlines++;
-  if(fcontent[fsize-1] != '\n')
-    nlines++;
+    // count lines in file
+    int nlines = 0;
+    for(int i = 0; i<fsize; i++)
+      if(fcontent[i] == '\n') nlines++;
+    if(fcontent[fsize-1] != '\n')
+      nlines++;
+    bee.buf_len = nlines;
 
-  // copy all lines from fcontent into buf
-  bee.buf_len = nlines;
-  bee.buf = malloc(nlines * sizeof(struct line));
-  size_t linelen;
-  for(size_t i = 0, j = 0; i<nlines && j<(size_t)fsize; i++){
-    linelen = 0;
-    while(j+linelen<(size_t)fsize && fcontent[j+linelen]!='\n')
-      linelen++;
-    // copy line in buffer
-    bee.buf[i].data = calloc(j+linelen, sizeof(char));
-    if(linelen>0)
-      memcpy(bee.buf[i].data, &fcontent[j], linelen);
-    bee.buf[i].len = linelen;
+    // copy all lines from fcontent into buf
+    bee.buf = malloc(nlines * sizeof(struct line));
+    int linelen;
+    for(int i = 0, j = 0; i<nlines && j<fsize; i++){
+      // count line length
+      for(linelen = 0; j+linelen<fsize-1 && fcontent[j+linelen]!='\n'; linelen++);
+      // copy line in buffer
+      bee.buf[i].data = calloc(j+linelen, sizeof(char));
+      if(linelen>0)
+        memcpy(bee.buf[i].data, &fcontent[j], linelen);
+      bee.buf[i].len = linelen;
 
-    j += linelen+1;
+      j += linelen+1;
+    }
+    free(fcontent);
   }
-
-  // start cursor
-  bee.cx = bee.cy = 0;
 
   tb_init();
 
   struct tb_event ev;
-  const char *footer_format = "\"%s\"  [=%d] L%d C%d";
+  const char *footer_format = "<%s> \"%s\"  [=%d] L%d C%d";
+  int screen_height, screen_width;
   while(1){
+    tb_clear();
+
+    screen_height = tb_height() - 1;
+    screen_width = tb_width();
+
     // print file
-    for(int i=0; i<tb_height() -1; i++){
-      tb_print(0, i, TB_WHITE, TB_BLACK, bee.buf[i].data);
+    for(int i=bee.sy; i< bee.sy+screen_height && i<bee.buf_len; i++){
+      for(int j=0; j<screen_width && j<bee.buf[i].len; j++)
+        tb_set_cell(j, i - bee.sy, *(bee.buf[i].data+j+bee.sx), TB_WHITE, TB_BLACK);
     }
     // print footer
-    tb_printf(0, tb_height() - 1, TB_BLACK, TB_WHITE, 
-              footer_format, argv[1], nlines, bee.cy, bee.cx);
+    tb_printf(0, tb_height() - 1, TB_BLACK, TB_WHITE,
+              footer_format, mode_label[bee.mode], argv[1], bee.buf_len, bee.cy, bee.cx);
 
     // print cursor
-    tb_set_cursor(bee.cx, bee.cy);
+    tb_set_cursor(bee.cx - bee.sx, bee.cy - bee.sy);
 
     tb_present();
 
@@ -140,13 +151,26 @@ int main(int argc, char **argv){
       break;
     switch(ev.ch){
     case 'h':
-      bee.cx--; break;
+      bee.cx--;
+      if(bee.cx<0) bee.cx = 0;
+      if(bee.cx < bee.sx) bee.sx = bee.cx;
+      break;
     case 'j':
-      bee.cy++; break;
+      bee.cy++;
+      if(bee.cy>=bee.buf_len) bee.cy = bee.buf_len > 0 ? bee.buf_len -1 : 0;
+      if(bee.cy-bee.sy >= screen_height) bee.sy = bee.cy - screen_height + 1;
+      break;
     case 'k':
-      bee.cy--; break;
+      bee.cy--;
+      if(bee.cy < 0) bee.cy = 0;
+      if(bee.cy < bee.sy) bee.sy = bee.cy;
+      break;
     case 'l':
-      bee.cx++; break;
+      bee.cx++;
+      int line_len = bee.buf[bee.cy].len;
+      if(bee.cx >= line_len) bee.cx = line_len > 0 ? line_len -1 : 0;
+      if(bee.cx - bee.sx >= screen_width) bee.sx = bee.cx - screen_width +1;
+      break;
     }
   }
   tb_shutdown();
