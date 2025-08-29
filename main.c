@@ -66,7 +66,6 @@ struct bee {
   int cx, cy; // cursor position in the file
   int cxx; // preferred column / goal column
   int sx, sy; // screen position, sy is the first line of the file we print
-
 };
 
 int main(int argc, char **argv){
@@ -111,7 +110,7 @@ int main(int argc, char **argv){
       // count line length
       for(linelen = 0; j+linelen<fsize-1 && fcontent[j+linelen]!='\n'; linelen++);
       // copy line in buffer
-      bee.buf[i].data = calloc(j+linelen, sizeof(char));
+      bee.buf[i].data = calloc(linelen, sizeof(char));
       if(linelen>0)
         memcpy(bee.buf[i].data, &fcontent[j], linelen);
       bee.buf[i].len = linelen;
