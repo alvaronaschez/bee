@@ -31,9 +31,9 @@ enum mode {
 
 char *mode_label[] = {"N", "I", "C"};
 
-struct line {
+struct string {
   char *data;
-  int len;
+  int len, cap;
 };
 
 /*
@@ -61,7 +61,7 @@ struct line {
 */
 struct bee {
   enum mode mode;
-  struct line *buf; // buffer content
+  struct string *buf; // buffer content
   int buf_len; // buffer length
   int cx, cy; // cursor position in the file
   int cxx; // preferred column / goal column
@@ -104,7 +104,7 @@ int main(int argc, char **argv){
     bee.buf_len = nlines;
 
     // copy all lines from fcontent into buf
-    bee.buf = malloc(nlines * sizeof(struct line));
+    bee.buf = malloc(nlines * sizeof(struct string));
     int linelen;
     for(int i = 0, j = 0; i<nlines && j<fsize; i++){
       // count line length
@@ -113,7 +113,7 @@ int main(int argc, char **argv){
       bee.buf[i].data = calloc(linelen, sizeof(char));
       if(linelen>0)
         memcpy(bee.buf[i].data, &fcontent[j], linelen);
-      bee.buf[i].len = linelen;
+      bee.buf[i].len = bee.buf[i].cap = linelen;
 
       j += linelen+1;
     }
