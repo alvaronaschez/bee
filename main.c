@@ -148,6 +148,7 @@ int main(int argc, char **argv){
     tb_poll_event(&ev);
     if(ev.ch == 'q')
       break;
+
     switch(ev.ch){
     case 'h':
       bee.cx--;
@@ -169,6 +170,19 @@ int main(int argc, char **argv){
       int line_len = bee.buf[bee.cy].len;
       if(bee.cx >= line_len) bee.cx = line_len > 0 ? line_len -1 : 0;
       if(bee.cx - bee.sx >= screen_width) bee.sx = bee.cx - screen_width +1;
+      break;
+    case 'x':
+      ;
+      struct string *s = bee.buf + bee.cy;
+      if(s->len==0)
+        break;
+      if(bee.cx < s->len-1)
+        memmove(s->data+bee.cx,   // dest
+                s->data+bee.cx+1, // src
+                s->len-bee.cx-1); // size 
+      else
+        bee.cx--;
+      s->len--;
       break;
     }
   }
