@@ -6,25 +6,6 @@
 #include <stdlib.h>
 #include <string.h>
 
-/*
-** keymaps **
-
-h - move left
-j - move down
-k - move up
-l - move right
-
-C-h - scroll left
-C-j - scroll down
-C-k - scroll up
-C-l - scroll right
-
-A-h - go to beginning of line
-A-j - go to last line
-A-k - go to first line
-A-l - go to end of line
-*/
-
 enum mode {
   NORMAL, INSERT, COMMAND
 };
@@ -36,37 +17,14 @@ struct string {
   int len, cap;
 };
 
-/*
-  invariant:
-  y:
-  0 <= toprow <= by < buf_len
-  by - toprow < screen_height // the distance between by and toprow must fit into the screen
-    where screen_height = tb_height - 1 (because of the footer)
-  x:
-  0 <= leftcol <= bx < line_len(by)
-  bx - leftcol < screen_width // the distance between bx and leftcol must fit into the screen
-  leftcol + screen_width +1 <= max(line_len(0..buf_len-1)) // in practice give a little more room
-
-  after moving / updating by:
-  if by < 0 => by := 0 (after move up)
-  if by >= buf_len => by := buf_len -1 (after move down)
-  if by < toprow => toprow := by (after move up)
-  if by >= toprow + screen_height => toprow := by - screen_height +1 (after move down)
-
-  after scrolling / updating toprow:
-  if toprow < 0 => toprow := 0 (after scroll up)
-  if toprow > buf_len => toprow := buf_len -1 (after scroll down)
-  if toprow > by => by := toprow (after scroll down)
-  if toprow <= by - screen_height => by := toprow + screen_height -1 (after scroll up)
-*/
 struct bee {
   enum mode mode;
-  struct string *buf; // buffer content
-  int buf_len; // buffer length
-  int bx, by; // cursor position in the file
-  int sx, sy; // cursor position in the screen
-  int sxx; // preferred column / goal column
-  int leftcol, toprow; // scroll offset, toprow is the first line of the file we print
+  struct string *buf;
+  int buf_len;
+  int bx, by; // relative to buffer
+  int sx, sy; // relative to viewport
+  int sxx; // goal/preferred/desired column
+  int sxoff, syoff;
 };
 
 int main(int argc, char **argv){
@@ -80,7 +38,7 @@ int main(int argc, char **argv){
   bee.mode = NORMAL;
   bee.bx = bee.by = 0;
   bee.sx = bee.sxx = bee.sy = 0;
-  bee.leftcol = bee.toprow = 0;
+  bee.sxoff = bee.syoff = 0;
 
   /* read file */
   {
@@ -135,10 +93,17 @@ int main(int argc, char **argv){
     screen_width = tb_width();
 
     // print file
-    for(int i=bee.toprow; i< bee.toprow+screen_height && i<bee.buf_len; i++){
+    int xoff;
+    for(int i=bee.syoff; i< bee.syoff+screen_height && i<bee.buf_len; i++){
+      xoff = 0;
       for(int j=0; j<screen_width && j<bee.buf[i].len; j++){
-        char c = *(bee.buf[i].data+j+bee.leftcol);
-        tb_set_cell(j, i - bee.toprow, c, TB_WHITE, TB_BLACK);
+        char c = *(bee.buf[i].data+j+bee.sxoff);
+        if(c=='\t'){
+          tb_print(j + xoff, i - bee.syoff, TB_WHITE, TB_BLACK, "        ");
+          xoff+=7;
+        }
+        else
+          tb_set_cell(j + xoff, i - bee.syoff, c, TB_WHITE, TB_BLACK);
       }
     }
     // print footer
@@ -146,7 +111,7 @@ int main(int argc, char **argv){
               footer_format, mode_label[bee.mode], argv[1], bee.buf_len, bee.by, bee.bx);
 
     // print cursor
-    tb_set_cursor(bee.bx - bee.leftcol, bee.by - bee.toprow);
+    tb_set_cursor(bee.sx - bee.sxoff, bee.by - bee.syoff);
 
     tb_present();
 
@@ -158,24 +123,36 @@ int main(int argc, char **argv){
     case 'h':
       bee.bx--;
       if(bee.bx<0) bee.bx = 0;
-      if(bee.bx < bee.leftcol) bee.leftcol = bee.bx;
+      if(bee.bx < bee.sxoff) bee.sxoff = bee.bx;
+      if(bee.buf[bee.by].data[bee.bx] == '\t')
+        bee.sx -= 8;
+      else
+        bee.sx --;
       break;
     case 'j':
       bee.by++;
       if(bee.by>=bee.buf_len) bee.by = bee.buf_len > 0 ? bee.buf_len -1 : 0;
-      if(bee.by-bee.toprow >= screen_height) bee.toprow = bee.by - screen_height + 1;
+      if(bee.by-bee.syoff >= screen_height) bee.syoff = bee.by - screen_height + 1;
       break;
     case 'k':
       bee.by--;
       if(bee.by < 0) bee.by = 0;
-      if(bee.by < bee.toprow) bee.toprow = bee.by;
+      if(bee.by < bee.syoff) bee.syoff = bee.by;
       break;
     case 'l':
-      bee.bx++;
-      int line_len = bee.buf[bee.by].len;
-      if(bee.bx >= line_len) bee.bx = line_len > 0 ? line_len -1 : 0;
-      if(bee.bx - bee.leftcol >= screen_width) bee.leftcol = bee.bx - screen_width +1;
+      if(bee.sxoff+sx+1==slinelen) break;
+      if(sx+1==swidth)bee.sxoff++;
+      bee.sx++;
       break;
+      //bee.bx++;
+      //int line_len = bee.buf[bee.by].len;
+      //if(bee.bx >= line_len) bee.bx = line_len > 0 ? line_len -1 : 0;
+      //if(bee.bx - bee.sxoff >= screen_width) bee.sxoff = bee.bx - screen_width +1;
+      //if(bee.bx > 0 && bee.buf[bee.by].data[bee.bx-1] == '\t')
+        //bee.sx += 8;
+      //else
+        //bee.sx++;
+      //break;
     case 'x':
       ;
       struct string *s = bee.buf + bee.by;
