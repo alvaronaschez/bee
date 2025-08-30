@@ -101,15 +101,15 @@ int main(int argc, char **argv){
         // print char
         if(si >= bee.xoff){
           if(c=='\t'){
-            tb_print(i, j - bee.yoff, TB_WHITE, TB_BLACK, "        ");
+            tb_print(si, j - bee.yoff, TB_WHITE, TB_BLACK, "        ");
           }
           else{
-            tb_set_cell(i, j - bee.yoff, c, TB_WHITE, TB_BLACK);
+            tb_set_cell(si, j - bee.yoff, c, TB_WHITE, TB_BLACK);
           }
  	}
  	// sync x, vx, bx
-        if(bee.y == j && si < bee.vx){
-          if(c == '\t') bee.vx += tablen-1;
+        if(bee.y == j && i == bee.x){
+          bee.vx = si;
         }
         // advance screen pointer
         si += c=='\t' ? tablen : 1;
