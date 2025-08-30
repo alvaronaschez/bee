@@ -86,38 +86,35 @@ int main(int argc, char **argv){
   const char *footer_format = "<%s> \"%s\"  [=%d] L%d C%d";
   const int tablen = 8;
   const	int footerheight = 1;
-  int screen_height, screen_width;
+#define screen_height (tb_height() - footerheight)
+#define screen_width (tb_width())
   while(1){
     tb_clear();
-
-    screen_height = tb_height() - footerheight;
-    screen_width = tb_width();
 
     // print file
     for(int j=bee.yoff; j< bee.yoff+screen_height && j<bee.buf_len; j++){
       // i points the buffer, si points the screen (including the non-visible part)
-      for(int i=0, si=0; i<bee.buf[j].len && si<bee.xoff+screen_width; i++){
+      for(int i=0, vi=0; i<bee.buf[j].len && vi<bee.xoff+screen_width; i++){
         char c = *(bee.buf[j].data+i+bee.xoff);
+        // sync x, vx, bx
+        if(j-bee.yoff == bee.y && i == bee.x) bee.vx = vi;
+
         // print char
-        if(si >= bee.xoff){
-          if(c=='\t'){
-            tb_print(si, j - bee.yoff, TB_WHITE, TB_BLACK, "        ");
-          }
-          else{
-            tb_set_cell(si, j - bee.yoff, c, TB_WHITE, TB_BLACK);
-          }
- 	}
- 	// sync x, vx, bx
-        if(bee.y == j && i == bee.x){
-          bee.vx = si;
+        if(vi >= bee.xoff){
+          if(c=='\t')
+            tb_print(vi, j - bee.yoff, TB_WHITE, TB_BLACK, "        ");
+          else
+            tb_set_cell(vi, j - bee.yoff, c, TB_WHITE, TB_BLACK);
         }
+
         // advance screen pointer
-        si += c=='\t' ? tablen : 1;
+        vi += (c=='\t' ? tablen : 1);
       }
     }
     // print footer
     tb_printf(0, tb_height() - 1, TB_BLACK, TB_WHITE,
-              footer_format, mode_label[bee.mode], argv[1], bee.buf_len, bee.yoff + bee.y, bee.xoff + bee.x);
+              footer_format, mode_label[bee.mode], argv[1],
+              bee.buf_len, bee.yoff + bee.y, bee.xoff + bee.x);
 
     // print cursor
     tb_set_cursor(bee.vx, bee.y);
@@ -130,29 +127,28 @@ int main(int argc, char **argv){
 
     switch(ev.ch){
     case 'h':
-      bee.x--;
+      if(bee.x > 0)
+        bee.x--;
+      else if(bee.xoff > 0)
+        bee.xoff--;
       break;
     case 'j':
-      bee.y++;
+      if(bee.y+1<screen_height)
+        bee.y++;
+      else if(bee.yoff + bee.y +1 < bee.buf_len)
+        bee.yoff++;
       break;
     case 'k':
-      bee.y--;
+      if(bee.y>0)
+        bee.y--;
+      else {
+        if(bee.yoff>0)
+          bee.yoff--;
+      }
       break;
     case 'l':
-      bee.x++;
-      break;
-    case 'x':
-      ;
-      //struct string *s = bee.buf + bee.by;
-      //if(s->len==0)
-        //break;
-      //if(bee.bx < s->len-1)
-        //memmove(s->data+bee.bx,   // dest
-                //s->data+bee.bx+1, // src
-                //s->len-bee.bx-1); // size 
-      //else
-        //bee.bx--;
-      //s->len--;
+      if(bee.vx < screen_width && bee.x+1<bee.buf[bee.yoff+bee.y].len)
+        bee.x++;
       break;
     }
   }
