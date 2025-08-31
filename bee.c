@@ -1,10 +1,13 @@
 /*
   minimal features:
   h j k l x i
+  #gg #G :#
+  gh gj gk gl
   f t F T %
-  :w :q :q!
+  :w :q :q! :#
   / . , ; n N
 */
+
 #define TB_IMPL
 #include "termbox2.h"
 
@@ -42,7 +45,7 @@ struct bee {
 #define bg_color TB_BLACK
 const char *footer_format = "<%s> \"%s\"  [=%d] L%d C%d";
 
-int utf8_char_len(const char* s){
+static inline int utf8_char_len(const char* s){
   if((s[0]&0x80) == 0x00) return 1; // 0xxx_xxxx
   if((s[0]&0xE0) == 0xC0) return 2; // 110x_xxxx 10xx_xxxx
   if((s[0]&0xF0) == 0xE0) return 3; // 1110_xxxx 10_xxxx 10xx_xxxx
@@ -92,96 +95,90 @@ static inline	void load_file(struct bee *bee, const char *filename){
 
 //static inline void print_screen(const struct bee *bee){
 static inline void print_screen(struct bee *bee){
-    tb_clear();
-    // print file
-    for(int j=bee->yoff; j< bee->yoff+screen_height && j<bee->buf_len; j++){
-      // i points the buffer, si points the screen (including the non-visible part)
-      int i, vi, bi;
-      for(i=vi=bi=0; bi<bee->buf[j].len && vi<bee->xoff+screen_width; i++){
-        char c = *(bee->buf[j].data+bi+bee->xoff);
-        char char_len = utf8_char_len(&c);
-        // sync x, vx, bx
-        if(j-bee->yoff == bee->y && i == bee->x){
-          bee->vx = vi;
-          bee->bx = bi;
-        }
-
-        // print char
-        if(vi >= bee->xoff){
-          if(c=='\t')
-            tb_print(vi, j - bee->yoff, fg_color, bg_color, "        ");
-          else {
-            switch(char_len){
-              case 1:
-                tb_set_cell(vi, j - bee->yoff, c, fg_color, bg_color);
-                break;
-              case 2:
-                tb_set_cell(vi, j -bee->yoff, '*', fg_color, bg_color);
-                break; 
-              case 3:
-                break;
-              case 4:
-                break;
-            }
+  tb_clear();
+  // print file
+  for(int j=bee->yoff; j< bee->yoff+screen_height && j<bee->buf_len; j++){
+    // i points the buffer, si points the screen (including the non-visible part)
+    int i, vi, bi;
+    for(i=vi=bi=0; bi<bee->buf[j].len && vi<bee->xoff+screen_width; i++){
+      char c = *(bee->buf[j].data+bi+bee->xoff);
+      char char_len = utf8_char_len(&c);
+      // sync x, vx, bx
+      if(j-bee->yoff == bee->y && i == bee->x){
+        bee->vx = vi;
+        bee->bx = bi;
+      }
+      // print char
+      if(vi >= bee->xoff){
+        if(c=='\t')
+          tb_print(vi, j - bee->yoff, fg_color, bg_color, "        ");
+        else {
+          switch(char_len){
+            case 1:
+              tb_set_cell(vi, j - bee->yoff, c, fg_color, bg_color);
+              break;
+            case 2:
+              tb_set_cell(vi, j -bee->yoff, '*', fg_color, bg_color);
+              break; 
+            case 3:
+              break;
+            case 4:
+              break;
           }
         }
-
-        // log
-        //tb_printf(tb_width()-20, tb_height()-1, fg_color, bg_color, "log: %d", );
-
-        // advance screen pointer
-        vi += c=='\t' ? tablen : 1;
-        bi += char_len;
       }
+      // log
+      //tb_printf(tb_width()-20, tb_height()-1, fg_color, bg_color, "log: %d", );
+      // advance screen pointer
+      vi += c=='\t' ? tablen : 1;
+      bi += char_len;
     }
-    // print footer
-    tb_printf(0, tb_height() - 1, bg_color, fg_color,
-              footer_format, mode_label[bee->mode], bee->filename,
-              bee->buf_len, bee->yoff + bee->y, bee->xoff + bee->x);
-
-    // print cursor
-    tb_set_cursor(bee->vx, bee->y);
-
-    tb_present();
+  }
+  // print footer
+  tb_printf(0, tb_height() - 1, bg_color, fg_color,
+            footer_format, mode_label[bee->mode], bee->filename,
+            bee->buf_len, bee->yoff + bee->y, bee->xoff + bee->x);
+  // print cursor
+  tb_set_cursor(bee->vx, bee->y);
+  tb_present();
 }
 
-char read_key(struct bee *bee){
-    struct tb_event ev;
-    tb_poll_event(&ev);
-    if(ev.ch == 'q')
-      return 0;
-
-    // TODO: fix xoff. Currently broken with tabs and multibyte chars
-    switch(ev.ch){
-    case 'h':
-      if(bee->x > 0)
-        bee->x--;
-      else if(bee->xoff > 0)
-        bee->xoff--;
-      break;
-    case 'j':
-      if(bee->y+1<screen_height)
-        bee->y++;
-      else if(bee->yoff + bee->y +1 < bee->buf_len)
-        bee->yoff++;
-      break;
-    case 'k':
-      if(bee->y>0)
-        bee->y--;
-      else {
-        if(bee->yoff>0)
-          bee->yoff--;
-      }
-      break;
-    case 'l':
-      if(bee->vx < screen_width && bee->bx+1<bee->buf[bee->yoff+bee->y].len)
-        bee->x++;
-      break;
+static inline char read_key(struct bee *bee){
+  struct tb_event ev;
+  tb_poll_event(&ev);
+  if(ev.ch == 'q')
+    return 0;
+  // TODO: fix xoff. Currently broken with tabs and multibyte chars
+  switch(ev.ch){
+  case 'h':
+    if(bee->x > 0)
+      bee->x--;
+    else if(bee->xoff > 0)
+      bee->xoff--;
+    break;
+  case 'j':
+    if(bee->y+1<screen_height)
+      bee->y++;
+    else if(bee->yoff + bee->y +1 < bee->buf_len)
+      bee->yoff++;
+    break;
+  case 'k':
+    if(bee->y>0)
+      bee->y--;
+    else {
+      if(bee->yoff>0)
+        bee->yoff--;
     }
-    return 1;
+    break;
+  case 'l':
+    if(bee->vx < screen_width && bee->bx+1<bee->buf[bee->yoff+bee->y].len)
+      bee->x++;
+    break;
+  }
+  return 1;
 }
 
-void bee_init(struct bee *bee){
+static inline void bee_init(struct bee *bee){
   bee->mode = NORMAL;
   bee->filename = NULL;
   bee->buf = NULL;
