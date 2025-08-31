@@ -27,9 +27,9 @@ struct bee {
   enum mode mode;
   struct string *buf;
   int buf_len;
-  int x, y;
-  int bx, vx;
-  int xoff, yoff;
+  int y, yoff;
+  int x, bx, vx;
+  int xoff;
 };
 
 int utf8_char_len(const char* s){
@@ -38,6 +38,40 @@ int utf8_char_len(const char* s){
   if((s[0]&0xF0) == 0xE0) return 3; // 1110_xxxx 10_xxxx 10xx_xxxx
   if((s[0]&0xF8) == 0xF0) return 4; // 1111_0xxx 10xx_xxxx  10xx_xxxx 10xx_xxxx
   return 0;
+}
+void load_file(struct bee *bee, const char *filename){
+  FILE *fp = fopen(filename, "r");
+  assert(fp);
+  int res = fseek(fp, 0, SEEK_END);
+  assert(res == 0);
+  long fsize = ftell(fp);
+  assert(fsize >= 0);
+  rewind(fp);
+  char *fcontent = (char*) malloc(fsize * sizeof(char));
+  fread(fcontent, 1, fsize, fp);
+  res = fclose(fp);
+  assert(res == 0);
+  // count lines in file
+  int nlines = 0;
+  for(int i = 0; i<fsize; i++)
+    if(fcontent[i] == '\n') nlines++;
+  if(fcontent[fsize-1] != '\n')
+    nlines++;
+  bee->buf_len = nlines;
+  // copy all lines from fcontent into buf
+  bee->buf = malloc(nlines * sizeof(struct string));
+  int linelen;
+  for(int i = 0, j = 0; i<nlines && j<fsize; i++){
+    // count line length
+    for(linelen = 0; j+linelen<fsize-1 && fcontent[j+linelen]!='\n'; linelen++);
+    // copy line in buffer
+    bee->buf[i].data = calloc(linelen, sizeof(char));
+    if(linelen>0)
+      memcpy(bee->buf[i].data, &fcontent[j], linelen);
+    bee->buf[i].len = bee->buf[i].cap = linelen;
+    j += linelen+1;
+  }
+  free(fcontent);
 }
 
 int main(int argc, char **argv){
@@ -54,45 +88,7 @@ int main(int argc, char **argv){
   bee.bx = bee.vx = 0;
 
   /* read file */
-  {
-    FILE *fp = fopen(argv[1], "r");
-    assert(fp);
-
-    int res = fseek(fp, 0, SEEK_END);
-    assert(res == 0);
-    long fsize = ftell(fp);
-    assert(fsize >= 0);
-    rewind(fp);
-
-    char *fcontent = (char*) malloc(fsize * sizeof(char));
-    fread(fcontent, 1, fsize, fp);
-    res = fclose(fp);
-    assert(res == 0);
-
-    // count lines in file
-    int nlines = 0;
-    for(int i = 0; i<fsize; i++)
-      if(fcontent[i] == '\n') nlines++;
-    if(fcontent[fsize-1] != '\n')
-      nlines++;
-    bee.buf_len = nlines;
-
-    // copy all lines from fcontent into buf
-    bee.buf = malloc(nlines * sizeof(struct string));
-    int linelen;
-    for(int i = 0, j = 0; i<nlines && j<fsize; i++){
-      // count line length
-      for(linelen = 0; j+linelen<fsize-1 && fcontent[j+linelen]!='\n'; linelen++);
-      // copy line in buffer
-      bee.buf[i].data = calloc(linelen, sizeof(char));
-      if(linelen>0)
-        memcpy(bee.buf[i].data, &fcontent[j], linelen);
-      bee.buf[i].len = bee.buf[i].cap = linelen;
-
-      j += linelen+1;
-    }
-    free(fcontent);
-  }
+  load_file(&bee, argv[1]);
 
   tb_init();
 
