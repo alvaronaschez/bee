@@ -55,6 +55,12 @@ static inline int utf8_char_len(const char* s){
   return 0;
 }
 
+static inline int visual_char_len(const char* s){
+  if(*s=='\t')
+    return tablen;
+  return 1;
+}
+
 static inline	void load_file(struct bee *bee, const char *filename){
   assert(bee->filename == NULL);
   bee->filename = calloc(strlen(filename)+1, sizeof(char));
