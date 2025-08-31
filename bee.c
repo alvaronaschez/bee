@@ -94,21 +94,13 @@ static inline	void load_file(struct bee *bee, const char *filename){
   free(fcontent);
 }
 
-//static inline void print_screen(const struct bee *bee){
-static inline void print_screen(struct bee *bee){
+static inline void print_screen(const struct bee *bee){
   tb_clear();
   // print file
   for(int j=bee->yoff; j< bee->yoff+screen_height && j<bee->buf_len; j++){
-    // i points the buffer, si points the screen (including the non-visible part)
-    int i, vi, bi;
-    for(i=vi=bi=0; bi<bee->buf[j].len && vi<bee->xoff+screen_width; i++){
+    for(int vi=0, bi=0; bi<bee->buf[j].len && vi<bee->xoff+screen_width;){
       char c = *(bee->buf[j].data+bi+bee->xoff);
       char char_len = utf8_char_len(&c);
-      // sync x, vx, bx
-      if(j-bee->yoff == bee->y && i == bee->x){
-        bee->vx = vi;
-        bee->bx = bi;
-      }
       // print char
       if(vi >= bee->xoff){
         if(c=='\t')
@@ -118,6 +110,7 @@ static inline void print_screen(struct bee *bee){
             case 1:
               tb_set_cell(vi, j - bee->yoff, c, fg_color, bg_color);
               break;
+            // TODO
             case 2:
               tb_set_cell(vi, j -bee->yoff, '*', fg_color, bg_color);
               break; 
@@ -128,9 +121,7 @@ static inline void print_screen(struct bee *bee){
           }
         }
       }
-      // log
-      //tb_printf(tb_width()-20, tb_height()-1, fg_color, bg_color, "log: %d", );
-      // advance screen pointer
+      // advance pointers
       vi += c=='\t' ? tablen : 1;
       bi += char_len;
     }
