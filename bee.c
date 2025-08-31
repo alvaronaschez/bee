@@ -27,10 +27,19 @@ struct bee {
   enum mode mode;
   struct string *buf;
   int buf_len;
+  char *filename;
   int y, yoff;
   int x, bx, vx;
   int xoff;
 };
+
+#define footerheight 1
+#define screen_height (tb_height() - footerheight)
+#define screen_width (tb_width())
+#define tablen 8
+#define fg_color TB_WHITE
+#define bg_color TB_BLACK
+const char *footer_format = "<%s> \"%s\"  [=%d] L%d C%d";
 
 int utf8_char_len(const char* s){
   if((s[0]&0x80) == 0x00) return 1; // 0xxx_xxxx
@@ -39,7 +48,12 @@ int utf8_char_len(const char* s){
   if((s[0]&0xF8) == 0xF0) return 4; // 1111_0xxx 10xx_xxxx  10xx_xxxx 10xx_xxxx
   return 0;
 }
-void load_file(struct bee *bee, const char *filename){
+
+static inline	void load_file(struct bee *bee, const char *filename){
+  assert(bee->filename == NULL);
+  bee->filename = calloc(strlen(filename)+1, sizeof(char));
+  strcpy(bee->filename, filename);
+  
   FILE *fp = fopen(filename, "r");
   assert(fp);
   int res = fseek(fp, 0, SEEK_END);
@@ -74,57 +88,34 @@ void load_file(struct bee *bee, const char *filename){
   free(fcontent);
 }
 
-int main(int argc, char **argv){
-  // assert argument count
-  if(argc < 2){
-    printf("missing file name\naborting\n");
-    return 1;
-  }
 
-  struct bee bee;
-  bee.mode = NORMAL;
-  bee.x = bee.y = 0;
-  bee.xoff = bee.yoff = 0;
-  bee.bx = bee.vx = 0;
-
-  /* read file */
-  load_file(&bee, argv[1]);
-
-  tb_init();
-
-  struct tb_event ev;
-  const char *footer_format = "<%s> \"%s\"  [=%d] L%d C%d";
-  const int tablen = 8;
-  const	int footerheight = 1;
-#define screen_height (tb_height() - footerheight)
-#define screen_width (tb_width())
-  while(1){
+//static inline void print_screen(const struct bee *bee){
+static inline void print_screen(struct bee *bee){
     tb_clear();
-
     // print file
-    for(int j=bee.yoff; j< bee.yoff+screen_height && j<bee.buf_len; j++){
+    for(int j=bee->yoff; j< bee->yoff+screen_height && j<bee->buf_len; j++){
       // i points the buffer, si points the screen (including the non-visible part)
       int i, vi, bi;
-      for(i=vi=bi=0; bi<bee.buf[j].len && vi<bee.xoff+screen_width; i++){
-        char c = *(bee.buf[j].data+bi+bee.xoff);
+      for(i=vi=bi=0; bi<bee->buf[j].len && vi<bee->xoff+screen_width; i++){
+        char c = *(bee->buf[j].data+bi+bee->xoff);
         char char_len = utf8_char_len(&c);
         // sync x, vx, bx
-        if(j-bee.yoff == bee.y && i == bee.x){
-          bee.vx = vi;
-          bee.bx = bi;
+        if(j-bee->yoff == bee->y && i == bee->x){
+          bee->vx = vi;
+          bee->bx = bi;
         }
 
         // print char
-        if(vi >= bee.xoff){
+        if(vi >= bee->xoff){
           if(c=='\t')
-            tb_print(vi, j - bee.yoff, TB_WHITE, TB_BLACK, "        ");
+            tb_print(vi, j - bee->yoff, fg_color, bg_color, "        ");
           else {
             switch(char_len){
               case 1:
-                tb_set_cell(vi, j - bee.yoff, c, TB_WHITE, TB_BLACK);
+                tb_set_cell(vi, j - bee->yoff, c, TB_WHITE, TB_BLACK);
                 break;
               case 2:
-                tb_set_cell(vi, j -bee.yoff, '*', TB_WHITE, TB_BLACK);
+                tb_set_cell(vi, j -bee->yoff, '*', TB_WHITE, TB_BLACK);
                 break; 
               case 3:
                 break;
@@ -144,46 +135,78 @@ int main(int argc, char **argv){
     }
     // print footer
     tb_printf(0, tb_height() - 1, TB_BLACK, TB_WHITE,
-              footer_format, mode_label[bee.mode], argv[1],
-              bee.buf_len, bee.yoff + bee.y, bee.xoff + bee.x);
+              footer_format, mode_label[bee->mode], bee->filename,
+              bee->buf_len, bee->yoff + bee->y, bee->xoff + bee->x);
 
     // print cursor
-    tb_set_cursor(bee.vx, bee.y);
+    tb_set_cursor(bee->vx, bee->y);
 
     tb_present();
+}
 
+char read_key(struct bee *bee){
+    struct tb_event ev;
     tb_poll_event(&ev);
     if(ev.ch == 'q')
-      break;
+      return 0;
 
     // TODO: fix xoff. Currently broken with tabs and multibyte chars
     switch(ev.ch){
     case 'h':
-      if(bee.x > 0)
-        bee.x--;
-      else if(bee.xoff > 0)
-        bee.xoff--;
+      if(bee->x > 0)
+        bee->x--;
+      else if(bee->xoff > 0)
+        bee->xoff--;
       break;
     case 'j':
-      if(bee.y+1<screen_height)
-        bee.y++;
-      else if(bee.yoff + bee.y +1 < bee.buf_len)
-        bee.yoff++;
+      if(bee->y+1<screen_height)
+        bee->y++;
+      else if(bee->yoff + bee->y +1 < bee->buf_len)
+        bee->yoff++;
       break;
     case 'k':
-      if(bee.y>0)
-        bee.y--;
+      if(bee->y>0)
+        bee->y--;
       else {
-        if(bee.yoff>0)
-          bee.yoff--;
+        if(bee->yoff>0)
+          bee->yoff--;
       }
       break;
     case 'l':
-      if(bee.vx < screen_width && bee.bx+1<bee.buf[bee.yoff+bee.y].len)
-        bee.x++;
+      if(bee->vx < screen_width && bee->bx+1<bee->buf[bee->yoff+bee->y].len)
+        bee->x++;
       break;
     }
+    return 1;
+}
+
+int main(int argc, char **argv){
+  // assert argument count
+  if(argc < 2){
+    printf("missing file name\naborting\n");
+    return 1;
   }
+
+  // init bee
+  struct bee bee;
+  {
+    bee.mode = NORMAL;
+    bee.filename = NULL;
+    bee.buf = NULL;
+    bee.buf_len = 0;
+    bee.x = bee.y = 0;
+    bee.xoff = bee.yoff = 0;
+    bee.bx = bee.vx = 0;
+  }
+
+  load_file(&bee, argv[1]);
+
+  tb_init();
+
+  do{
+    print_screen(&bee);
+  }while(read_key(&bee));
+
   tb_shutdown();
 
   return 0;
