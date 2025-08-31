@@ -143,7 +143,7 @@ static inline void print_screen(struct bee *bee){
   tb_present();
 }
 
-static inline char read_key(struct bee *bee){
+static inline char normal_read_key(struct bee *bee){
   struct tb_event ev;
   tb_poll_event(&ev);
   if(ev.ch == 'q')
@@ -176,6 +176,15 @@ static inline char read_key(struct bee *bee){
     break;
   }
   return 1;
+}
+
+static inline char read_key(struct bee *bee){
+  switch(bee->mode){
+  case NORMAL:
+    return normal_read_key(bee);
+  default:
+    return 0;
+  }
 }
 
 static inline void bee_init(struct bee *bee){
