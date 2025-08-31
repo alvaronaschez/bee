@@ -1,3 +1,9 @@
+/*
+  minimal features:
+  h j k l x i
+  f t F T %
+  :w :q :q!
+*/
 #define TB_IMPL
 #include "termbox2.h"
 
@@ -25,6 +31,14 @@ struct bee {
   int bx, vx;
   int xoff, yoff;
 };
+
+int utf8_char_len(const char* s){
+  if((s[0]&0x80) == 0x00) return 1; // 0xxx_xxxx
+  if((s[0]&0xE0) == 0xC0) return 2; // 110x_xxxx 10xx_xxxx
+  if((s[0]&0xF0) == 0xE0) return 3; // 1110_xxxx 10_xxxx 10xx_xxxx
+  if((s[0]&0xF8) == 0xF0) return 4; // 1111_0xxx 10xx_xxxx  10xx_xxxx 10xx_xxxx
+  return 0;
+}
 
 int main(int argc, char **argv){
   // assert argument count
@@ -94,21 +108,42 @@ int main(int argc, char **argv){
     // print file
     for(int j=bee.yoff; j< bee.yoff+screen_height && j<bee.buf_len; j++){
       // i points the buffer, si points the screen (including the non-visible part)
-      for(int i=0, vi=0; i<bee.buf[j].len && vi<bee.xoff+screen_width; i++){
-        char c = *(bee.buf[j].data+i+bee.xoff);
+      int i, vi, bi;
+      for(i=vi=bi=0; bi<bee.buf[j].len && vi<bee.xoff+screen_width; i++){
+        char c = *(bee.buf[j].data+bi+bee.xoff);
+        char char_len = utf8_char_len(&c);
         // sync x, vx, bx
-        if(j-bee.yoff == bee.y && i == bee.x) bee.vx = vi;
+        if(j-bee.yoff == bee.y && i == bee.x){
+          bee.vx = vi;
+          bee.bx = bi;
+        }
 
         // print char
         if(vi >= bee.xoff){
           if(c=='\t')
             tb_print(vi, j - bee.yoff, TB_WHITE, TB_BLACK, "        ");
-          else
-            tb_set_cell(vi, j - bee.yoff, c, TB_WHITE, TB_BLACK);
+          else {
+            switch(char_len){
+              case 1:
+                tb_set_cell(vi, j - bee.yoff, c, TB_WHITE, TB_BLACK);
+                break;
+              case 2:
+                tb_set_cell(vi, j -bee.yoff, '*', TB_WHITE, TB_BLACK);
+                break; 
+              case 3:
+                break;
+              case 4:
+                break;
+            }
+          }
         }
 
+        // log
+        //tb_printf(tb_width()-20, tb_height()-1, TB_BLACK, TB_WHITE, "log: %d", );
+
         // advance screen pointer
-        vi += (c=='\t' ? tablen : 1);
+        vi += c=='\t' ? tablen : 1;
+        bi += char_len;
       }
     }
     // print footer
@@ -125,6 +160,7 @@ int main(int argc, char **argv){
     if(ev.ch == 'q')
       break;
 
+    // TODO: fix xoff. Currently broken with tabs and multibyte chars
     switch(ev.ch){
     case 'h':
       if(bee.x > 0)
@@ -147,7 +183,7 @@ int main(int argc, char **argv){
       }
       break;
     case 'l':
-      if(bee.vx < screen_width && bee.x+1<bee.buf[bee.yoff+bee.y].len)
+      if(bee.vx < screen_width && bee.bx+1<bee.buf[bee.yoff+bee.y].len)
         bee.x++;
       break;
     }
