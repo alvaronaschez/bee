@@ -3,6 +3,7 @@
   h j k l x i
   f t F T %
   :w :q :q!
+  / . , ; n N
 */
 #define TB_IMPL
 #include "termbox2.h"
@@ -112,10 +113,10 @@ static inline void print_screen(struct bee *bee){
           else {
             switch(char_len){
               case 1:
-                tb_set_cell(vi, j - bee->yoff, c, TB_WHITE, TB_BLACK);
+                tb_set_cell(vi, j - bee->yoff, c, fg_color, bg_color);
                 break;
               case 2:
-                tb_set_cell(vi, j -bee->yoff, '*', TB_WHITE, TB_BLACK);
+                tb_set_cell(vi, j -bee->yoff, '*', fg_color, bg_color);
                 break; 
               case 3:
                 break;
@@ -126,7 +127,7 @@ static inline void print_screen(struct bee *bee){
         }
 
         // log
-        //tb_printf(tb_width()-20, tb_height()-1, TB_BLACK, TB_WHITE, "log: %d", );
+        //tb_printf(tb_width()-20, tb_height()-1, fg_color, bg_color, "log: %d", );
 
         // advance screen pointer
         vi += c=='\t' ? tablen : 1;
@@ -134,7 +135,7 @@ static inline void print_screen(struct bee *bee){
       }
     }
     // print footer
-    tb_printf(0, tb_height() - 1, TB_BLACK, TB_WHITE,
+    tb_printf(0, tb_height() - 1, bg_color, fg_color,
               footer_format, mode_label[bee->mode], bee->filename,
               bee->buf_len, bee->yoff + bee->y, bee->xoff + bee->x);
 
@@ -180,24 +181,25 @@ char read_key(struct bee *bee){
     return 1;
 }
 
+void bee_init(struct bee *bee){
+  bee->mode = NORMAL;
+  bee->filename = NULL;
+  bee->buf = NULL;
+  bee->buf_len = 0;
+  bee->x = bee->y = 0;
+  bee->xoff = bee->yoff = 0;
+  bee->bx = bee->vx = 0;
+
+}
+
 int main(int argc, char **argv){
-  // assert argument count
   if(argc < 2){
     printf("missing file name\naborting\n");
     return 1;
   }
 
-  // init bee
   struct bee bee;
-  {
-    bee.mode = NORMAL;
-    bee.filename = NULL;
-    bee.buf = NULL;
-    bee.buf_len = 0;
-    bee.x = bee.y = 0;
-    bee.xoff = bee.yoff = 0;
-    bee.bx = bee.vx = 0;
-  }
+  bee_init(&bee);
 
   load_file(&bee, argv[1]);
 
@@ -208,6 +210,5 @@ int main(int argc, char **argv){
   }while(read_key(&bee));
 
   tb_shutdown();
-
   return 0;
 }
