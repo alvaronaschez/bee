@@ -41,7 +41,9 @@ struct bee {
 #define screen_height (tb_height() - footerheight)
 #define screen_width (tb_width())
 #define tablen 8
-#define fg_color TB_WHITE
+//#define fg_color TB_WHITE
+//#define fg_color TB_CYAN
+#define fg_color TB_MAGENTA
 #define bg_color TB_BLACK
 const char *footer_format = "<%s> \"%s\"  [=%d] L%d C%d";
 
@@ -91,7 +93,6 @@ static inline	void load_file(struct bee *bee, const char *filename){
   }
   free(fcontent);
 }
-
 
 //static inline void print_screen(const struct bee *bee){
 static inline void print_screen(struct bee *bee){
@@ -143,37 +144,49 @@ static inline void print_screen(struct bee *bee){
   tb_present();
 }
 
+static inline void n_h(struct bee *bee){
+  if(bee->x > 0)
+    bee->x--;
+  else if(bee->xoff > 0)
+    bee->xoff--;
+}
+static inline void n_j(struct bee *bee){
+  if(bee->y+1<screen_height)
+    bee->y++;
+  else if(bee->yoff + bee->y +1 < bee->buf_len)
+    bee->yoff++;
+}
+static inline void n_k(struct bee *bee){
+  if(bee->y>0)
+    bee->y--;
+  else {
+    if(bee->yoff>0)
+      bee->yoff--;
+  }
+}
+static inline void n_l(struct bee *bee){
+  if(bee->vx < screen_width && bee->bx+1<bee->buf[bee->yoff+bee->y].len)
+    bee->x++;
+}
+static inline void n_x(struct bee *bee){
+}
+
 static inline char normal_read_key(struct bee *bee){
   struct tb_event ev;
   tb_poll_event(&ev);
   if(ev.ch == 'q')
     return 0;
-  // TODO: fix xoff. Currently broken with tabs and multibyte chars
   switch(ev.ch){
   case 'h':
-    if(bee->x > 0)
-      bee->x--;
-    else if(bee->xoff > 0)
-      bee->xoff--;
-    break;
+    n_h(bee); break;
   case 'j':
-    if(bee->y+1<screen_height)
-      bee->y++;
-    else if(bee->yoff + bee->y +1 < bee->buf_len)
-      bee->yoff++;
-    break;
+    n_j(bee); break;
   case 'k':
-    if(bee->y>0)
-      bee->y--;
-    else {
-      if(bee->yoff>0)
-        bee->yoff--;
-    }
-    break;
+    n_k(bee); break;
   case 'l':
-    if(bee->vx < screen_width && bee->bx+1<bee->buf[bee->yoff+bee->y].len)
-      bee->x++;
-    break;
+    n_l(bee); break;
+  case 'x':
+    n_x(bee); break;
   }
   return 1;
 }
@@ -195,7 +208,6 @@ static inline void bee_init(struct bee *bee){
   bee->x = bee->y = 0;
   bee->xoff = bee->yoff = 0;
   bee->bx = bee->vx = 0;
-
 }
 
 int main(int argc, char **argv){
