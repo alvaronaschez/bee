@@ -1,6 +1,6 @@
 /*
   minimal features:
-  h j k l x i
+  h j k l x X i
   #gg #G :#
   gh gj gk gl
   f t F T %
@@ -15,6 +15,14 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+
+#define fg_color TB_YELLOW
+#define bg_color TB_BLACK
+#define tablen 8
+#define footerheight 1
+const char *footer_format = "<%s> \"%s\"  [=%d] L%d C%d";
+#define screen_height (tb_height() - footerheight)
+#define screen_width (tb_width())
 
 enum mode {
   NORMAL, INSERT, COMMAND
@@ -37,28 +45,48 @@ struct bee {
   int xoff;
 };
 
-#define footerheight 1
-#define screen_height (tb_height() - footerheight)
-#define screen_width (tb_width())
-#define tablen 8
-//#define fg_color TB_WHITE
-//#define fg_color TB_CYAN
-#define fg_color TB_MAGENTA
-#define bg_color TB_BLACK
-const char *footer_format = "<%s> \"%s\"  [=%d] L%d C%d";
-
-static inline int utf8_char_len(const char* s){
+static inline int utf8len(const char* s){
   if((s[0]&0x80) == 0x00) return 1; // 0xxx_xxxx
   if((s[0]&0xE0) == 0xC0) return 2; // 110x_xxxx 10xx_xxxx
-  if((s[0]&0xF0) == 0xE0) return 3; // 1110_xxxx 10_xxxx 10xx_xxxx
+  if((s[0]&0xF0) == 0xE0) return 3; // 1110_xxxx 10xx_xxxx 10xx_xxxx
   if((s[0]&0xF8) == 0xF0) return 4; // 1111_0xxx 10xx_xxxx  10xx_xxxx 10xx_xxxx
   return 0;
 }
 
-static inline int visual_char_len(const char* s){
+static inline int columnlen(const char* s){
   if(*s=='\t')
     return tablen;
   return 1;
+}
+
+static inline int utf8prevn(const char* s, int off, int n);
+static inline int utf8nextn(const char* s, int off, int n){
+  if(n<0) return utf8prevn(s, off, -n);
+  int len;
+  for(; n>0; n--){
+    len = utf8len(s+off);
+    if(len == -1) return -1;
+    if(s[off+len] == '\0') return off;
+    off+=len;
+  }
+  return off;
+}
+static inline int utf8next(const char* s, int off){
+  return utf8nextn(s, off, 1);
+}
+static inline int utf8prevn(const char* s, int off, int n){ 
+  // TODO
+  if(n<0) return utf8nextn(s, off, -n);
+  int i;
+  for(; n>0; n--){ 
+    for(i=0; i<4 && (s[off]&0xC0)==0x80; off--, i++);
+    if(utf8len(s+off) == 0) return -1;
+    if(off == 0) return 0;
+  }
+  return off;
+}
+static inline int utf8prev(const char* s, int off){
+  return utf8prevn(s, off, 1);
 }
 
 static inline	void load_file(struct bee *bee, const char *filename){
@@ -102,11 +130,10 @@ static inline	void load_file(struct bee *bee, const char *filename){
 
 static inline void print_screen(const struct bee *bee){
   tb_clear();
-  // print file
   for(int j=bee->yoff; j< bee->yoff+screen_height && j<bee->buf_len; j++){
     for(int vi=0, bi=0; bi<bee->buf[j].len && vi<bee->xoff+screen_width;){
       char c = *(bee->buf[j].data+bi+bee->xoff);
-      char char_len = utf8_char_len(&c);
+      char char_len = utf8len(&c);
       // print char
       if(vi >= bee->xoff){
         if(c=='\t')
@@ -142,10 +169,35 @@ static inline void print_screen(const struct bee *bee){
 }
 
 static inline void n_h(struct bee *bee){
-  if(bee->x > 0)
+  if(bee->x > 0){
     bee->x--;
-  else if(bee->xoff > 0)
+    bee->vx--;
+    bee->bx--;
+  }
+  else if(bee->xoff > 0){
     bee->xoff--;
+  }
+}
+static inline void n_l(struct bee *bee){
+  const struct string line = bee->buf[bee->yoff+bee->y];
+  const char *c = line.data+bee->bx;
+  int blen = utf8len(c);
+  int vlen = columnlen(c);
+  if(bee->bx+blen<line.len){
+    const char *nc = c+blen;
+    int nblen = utf8len(nc);
+    int nvlen = columnlen(nc);
+
+    bee->x++;
+    bee->bx += blen;
+
+    // TODO!!
+    if(bee->vx+vlen+nvlen < screen_width){
+      bee->vx += vlen;
+    } else {
+      bee->xoff += vlen;
+    }
+  }
 }
 static inline void n_j(struct bee *bee){
   if(bee->y+1<screen_height)
@@ -160,10 +212,6 @@ static inline void n_k(struct bee *bee){
     if(bee->yoff>0)
       bee->yoff--;
   }
-}
-static inline void n_l(struct bee *bee){
-  if(bee->vx < screen_width && bee->bx+1<bee->buf[bee->yoff+bee->y].len)
-    bee->x++;
 }
 static inline void n_x(struct bee *bee){
 }
