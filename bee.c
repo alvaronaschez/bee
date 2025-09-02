@@ -68,6 +68,12 @@ static inline int columnlen(const char* s){
   return 1;
 }
 
+int columndist(const char* s, int off1, int off2){
+  if(off1 == off2) return 0;
+  if(off1 > off2) return columndist(s, off2, off1);
+  return columnlen(s+off1) + columndist(s, off1 +utf8len(s+off1), off2);
+}
+
 static inline int utf8prevn(const char* s, int off, int n);
 static inline int utf8nextn(const char* s, int off, int n){
   if(n<0) return utf8prevn(s, off, -n);
