@@ -191,30 +191,32 @@ static inline void print_screen(const struct bee *bee){
 }
 
 static inline void n_h(struct bee *bee){
-  if(bee->x > 0){
-    bee->x--;
-    bee->vx--;
-    bee->bx--;
-  }
-  else if(bee->xoff > 0){
-    // TODO
-    bee->xoff--;
+  if(bee->x == 0)
+    return;
+  // bee->x > 0
+  char *c = current_char_ptr(bee);
+  bee->x--;
+  bee->vx -= columnlen(c);
+  bee->bx -= bytelen(c);
+  if(bee->vx+columnlen(c) > screen_width){
+    // TODO: decrease bee->xoff
   }
 }
 static inline void n_l(struct bee *bee){
   const char *c = current_char_ptr(bee);
   int bl = bytelen(c);
-  if(bee->bx+bl < current_line_ptr(bee)->len){
-    bee->x++;
-    bee->bx += bl;
-    bee->vx += columnlen(c);
-    c += bl;
+  if(bee->bx+bl == current_line_ptr(bee)->len)
+    return;
+  // bee->bx+bl < current_line_ptr(bee)->len
+  bee->x++;
+  bee->bx += bl;
+  bee->vx += columnlen(c);
+  c += bl;
 
-    if(bee->vx+columnlen(c) > screen_width){
-      int x = bee->vx+columnlen(c) - screen_width;
-      bee->xoff += x;
-      bee->vx -= x;
-    }
+  if(bee->vx+columnlen(c) > screen_width){
+    int x = bee->vx+columnlen(c) - screen_width;
+    bee->xoff += x;
+    bee->vx -= x;
   }
 }
 static inline void n_j(struct bee *bee){
