@@ -189,6 +189,7 @@ static inline void n_h(struct bee *bee){
     bee->bx--;
   }
   else if(bee->xoff > 0){
+    // TODO
     bee->xoff--;
   }
 }
@@ -205,11 +206,14 @@ static inline void n_l(struct bee *bee){
     bee->x++;
     bee->bx += blen;
 
-    // TODO!!
+    // TODO: review
     if(bee->vx+vlen+nvlen < screen_width){
       bee->vx += vlen;
     } else {
-      bee->xoff += vlen;
+      int vlinelen = bee->vx+vlen+nvlen;
+      int x = vlinelen - screen_width;
+      bee->xoff += x;
+      bee->vx -= x;
     }
   }
 }
