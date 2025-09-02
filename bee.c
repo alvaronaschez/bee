@@ -1,6 +1,6 @@
 /*
   minimal features:
-  h j k l 
+  h j k l
   d D i I c C a A
   x X
   #gg #G :#
@@ -36,8 +36,8 @@ enum mode {
 char *mode_label[] = {"N", "I", "C"};
 
 struct string {
-  char *data;
-  int len, cap;
+  char *chars; // null terminated
+  int len, cap; // length and capacity
 };
 
 struct bee {
@@ -49,6 +49,13 @@ struct bee {
   int x, bx, vx;
   int xoff;
 };
+
+static inline struct string *current_line_ptr(struct bee* bee){
+  return &bee->buf[bee->yoff+bee->y];
+}
+static inline char *current_char_ptr(struct bee* bee){
+  return bee->buf[bee->yoff+bee->y].chars + bee->bx;
+}
 
 #define bytelen utf8len
 static inline int utf8len(const char* s){
@@ -90,10 +97,10 @@ static inline int utf8nextn(const char* s, int off, int n){
 static inline int utf8next(const char* s, int off){
   return utf8nextn(s, off, 1);
 }
-static inline int utf8prevn(const char* s, int off, int n){ 
+static inline int utf8prevn(const char* s, int off, int n){
   if(n<0) return utf8nextn(s, off, -n);
   int i;
-  for(; n>0; n--){ 
+  for(; n>0; n--){
     for(i=0; i<4 && (s[off]&0xC0)==0x80; off--, i++);
     if(utf8len(s+off) == 0) return -1;
     if(off == 0) return 0;
@@ -108,7 +115,7 @@ static inline	void load_file(struct bee *bee, const char *filename){
   assert(bee->filename == NULL);
   bee->filename = calloc(strlen(filename)+1, sizeof(char));
   strcpy(bee->filename, filename);
-  
+ 
   FILE *fp = fopen(filename, "r");
   assert(fp);
   int res = fseek(fp, 0, SEEK_END);
@@ -134,9 +141,9 @@ static inline	void load_file(struct bee *bee, const char *filename){
     // count line length
     for(linelen = 0; j+linelen<fsize-1 && fcontent[j+linelen]!='\n'; linelen++);
     // copy line in buffer
-    bee->buf[i].data = calloc(linelen, sizeof(char));
+    bee->buf[i].chars = calloc(linelen+1, sizeof(char));
     if(linelen>0)
-      memcpy(bee->buf[i].data, &fcontent[j], linelen);
+      memcpy(bee->buf[i].chars , &fcontent[j], linelen);
     bee->buf[i].len = bee->buf[i].cap = linelen;
     j += linelen+1;
   }
@@ -147,7 +154,7 @@ static inline void print_screen(const struct bee *bee){
   tb_clear();
   for(int j=bee->yoff; j< bee->yoff+screen_height && j<bee->buf_len; j++){
     for(int vi=0, bi=0; bi<bee->buf[j].len && vi<bee->xoff+screen_width;){
-      char c = *(bee->buf[j].data+bi+bee->xoff);
+      char c = *(bee->buf[j].chars+bi+bee->xoff);
       char char_len = utf8len(&c);
       // print char
       if(vi >= bee->xoff){
@@ -161,7 +168,7 @@ static inline void print_screen(const struct bee *bee){
             // TODO
             case 2:
               tb_set_cell(vi, j -bee->yoff, '*', fg_color, bg_color);
-              break; 
+              break;
             case 3:
               break;
             case 4:
@@ -195,17 +202,16 @@ static inline void n_h(struct bee *bee){
   }
 }
 static inline void n_l(struct bee *bee){
-  const struct string line = bee->buf[bee->yoff+bee->y];
-  const char *c = line.data+bee->bx;
+  const char *c = current_char_ptr(bee);
   int bl = bytelen(c);
-  if(bee->bx+bl < line.len){
+  if(bee->bx+bl < current_line_ptr(bee)->len){
     bee->x++;
     bee->bx += bl;
-    bee->vx += collen(c);
+    bee->vx += columnlen(c);
     c += bl;
 
-    if(bee->vx+collen(c) > screen_width){
-      int x = bee->vx+collen(c) - screen_width;
+    if(bee->vx+columnlen(c) > screen_width){
+      int x = bee->vx+columnlen(c) - screen_width;
       bee->xoff += x;
       bee->vx -= x;
     }
