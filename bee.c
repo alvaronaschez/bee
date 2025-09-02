@@ -111,7 +111,7 @@ static inline int utf8prev(const char* s, int off){
   return utf8prevn(s, off, 1);
 }
 
-static inline	void load_file(struct bee *bee, const char *filename){
+static inline void load_file(struct bee *bee, const char *filename){
   assert(bee->filename == NULL);
   bee->filename = calloc(strlen(filename)+1, sizeof(char));
   strcpy(bee->filename, filename);
@@ -156,12 +156,12 @@ static inline void print_screen(const struct bee *bee){
     int vi=0, bi=0;
     char *c;
     while(vi < bee->xoff){
-      c = bee->buf[j].chars + bi + bee->xoff;
+      c = bee->buf[j].chars + bi;
       vi += columnlen(c);
       bi += bytelen(c);
     }
     while(bi<bee->buf[j].len && vi<bee->xoff+screen_width){
-      c = bee->buf[j].chars + bi + bee->xoff;
+      c = bee->buf[j].chars + bi;
       switch(bytelen(c)){
         case 1:
           if(*c=='\t')
@@ -185,7 +185,7 @@ static inline void print_screen(const struct bee *bee){
   // print footer
   tb_printf(0, tb_height() - 1, bg_color, fg_color,
             footer_format, mode_label[bee->mode], bee->filename,
-            bee->buf_len, bee->yoff + bee->y, bee->xoff + bee->x);
+            bee->buf_len, bee->yoff + bee->y, bee->x);
   // print cursor
   tb_set_cursor(bee->vx, bee->y);
   tb_present();
@@ -194,13 +194,13 @@ static inline void print_screen(const struct bee *bee){
 static inline void n_h(struct bee *bee){
   if(bee->x == 0)
     return;
-  // bee->x > 0
-  char *c = current_char_ptr(bee);
+  bee->bx -= bytelen(current_char_ptr(bee));
   bee->x--;
-  bee->vx -= columnlen(c);
-  bee->bx -= bytelen(c);
-  if(bee->vx+columnlen(c) > screen_width){
-    // TODO: decrease bee->xoff
+  char *c = current_char_ptr(bee);
+  if(bee->vx >= columnlen(c)){
+    bee->vx -= columnlen(c);
+  } else {
+    bee->xoff -= columnlen(c);
   }
 }
 static inline void n_l(struct bee *bee){
