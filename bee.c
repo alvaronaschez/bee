@@ -50,6 +50,7 @@ struct bee {
   int xoff;
 };
 
+#define bytelen utf8len
 static inline int utf8len(const char* s){
   if((s[0]&0x80) == 0x00) return 1; // 0xxx_xxxx
   if((s[0]&0xE0) == 0xC0) return 2; // 110x_xxxx 10xx_xxxx
@@ -196,22 +197,15 @@ static inline void n_h(struct bee *bee){
 static inline void n_l(struct bee *bee){
   const struct string line = bee->buf[bee->yoff+bee->y];
   const char *c = line.data+bee->bx;
-  int blen = utf8len(c);
-  int vlen = columnlen(c);
-  if(bee->bx+blen < line.len){
-    const char *nc = c+blen;
-    int nblen = utf8len(nc);
-    int nvlen = columnlen(nc);
-
+  int bl = bytelen(c);
+  if(bee->bx+bl < line.len){
     bee->x++;
-    bee->bx += blen;
+    bee->bx += bl;
+    bee->vx += collen(c);
+    c += bl;
 
-    // TODO: review
-    if(bee->vx+vlen+nvlen < screen_width){
-      bee->vx += vlen;
-    } else {
-      int vlinelen = bee->vx+vlen+nvlen;
-      int x = vlinelen - screen_width;
+    if(bee->vx+collen(c) > screen_width){
+      int x = bee->vx+collen(c) - screen_width;
       bee->xoff += x;
       bee->vx -= x;
     }
