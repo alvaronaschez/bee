@@ -153,32 +153,33 @@ static inline	void load_file(struct bee *bee, const char *filename){
 static inline void print_screen(const struct bee *bee){
   tb_clear();
   for(int j=bee->yoff; j< bee->yoff+screen_height && j<bee->buf_len; j++){
-    for(int vi=0, bi=0; bi<bee->buf[j].len && vi<bee->xoff+screen_width;){
-      char c = *(bee->buf[j].chars+bi+bee->xoff);
-      char char_len = utf8len(&c);
-      // print char
-      if(vi >= bee->xoff){
-        if(c=='\t')
-          tb_print(vi, j - bee->yoff, fg_color, bg_color, "        ");
-        else {
-          switch(char_len){
-            case 1:
-              tb_set_cell(vi, j - bee->yoff, c, fg_color, bg_color);
-              break;
-            // TODO
-            case 2:
-              tb_set_cell(vi, j -bee->yoff, '*', fg_color, bg_color);
-              break;
-            case 3:
-              break;
-            case 4:
-              break;
-          }
-        }
+    int vi=0, bi=0;
+    char *c;
+    while(vi < bee->xoff){
+      c = bee->buf[j].chars + bi + bee->xoff;
+      vi += columnlen(c);
+      bi += bytelen(c);
+    }
+    while(bi<bee->buf[j].len && vi<bee->xoff+screen_width){
+      c = bee->buf[j].chars + bi + bee->xoff;
+      switch(bytelen(c)){
+        case 1:
+          if(*c=='\t')
+            tb_print(vi - bee->xoff, j - bee->yoff, fg_color, bg_color, "        ");
+          else
+            tb_set_cell(vi - bee->xoff, j - bee->yoff, *c, fg_color, bg_color);
+          break;
+        // TODO
+        case 2:
+          tb_set_cell(vi - bee->xoff, j -bee->yoff, '*', fg_color, bg_color);
+          break;
+        case 3:
+          break;
+        case 4:
+          break;
       }
-      // advance pointers
-      vi += c=='\t' ? tablen : 1;
-      bi += char_len;
+      vi += columnlen(c);
+      bi += bytelen(c);
     }
   }
   // print footer
