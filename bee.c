@@ -1,6 +1,8 @@
 /*
   minimal features:
-  h j k l x X i
+  h j k l 
+  d D i I c C a A
+  x X
   #gg #G :#
   gh gj gk gl
   f t F T %
@@ -15,7 +17,10 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <wchar.h>
+#include <locale.h>
 
+#define LOCALE "en_US.UTF-8"
 #define fg_color TB_YELLOW
 #define bg_color TB_BLACK
 #define tablen 8
@@ -56,6 +61,10 @@ static inline int utf8len(const char* s){
 static inline int columnlen(const char* s){
   if(*s=='\t')
     return tablen;
+  wchar_t wc;
+  mbtowc(&wc, s, MB_CUR_MAX);
+  int width = wcwidth(wc);
+  assert(width>=0); // -1 -> invalid utf8 char
   return 1;
 }
 
@@ -75,7 +84,6 @@ static inline int utf8next(const char* s, int off){
   return utf8nextn(s, off, 1);
 }
 static inline int utf8prevn(const char* s, int off, int n){ 
-  // TODO
   if(n<0) return utf8nextn(s, off, -n);
   int i;
   for(; n>0; n--){ 
@@ -183,7 +191,7 @@ static inline void n_l(struct bee *bee){
   const char *c = line.data+bee->bx;
   int blen = utf8len(c);
   int vlen = columnlen(c);
-  if(bee->bx+blen<line.len){
+  if(bee->bx+blen < line.len){
     const char *nc = c+blen;
     int nblen = utf8len(nc);
     int nvlen = columnlen(nc);
@@ -260,6 +268,8 @@ int main(int argc, char **argv){
     printf("missing file name\naborting\n");
     return 1;
   }
+
+  setlocale(LC_CTYPE, LOCALE);
 
   struct bee bee;
   bee_init(&bee);
