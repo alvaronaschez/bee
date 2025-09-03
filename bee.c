@@ -38,6 +38,8 @@ char *mode_label[] = {"N", "I", "C"};
 struct string {
   char *chars; // null terminated
   int len, cap; // length and capacity
+  int columnlen; // length in number of columns in the screen
+  int codepointlen; // number of unicode codepoints
 };
 
 struct bee {
@@ -46,7 +48,7 @@ struct bee {
   int buf_len;
   char *filename;
   int y, yoff;
-  int x, bx, vx;
+  int x, bx, vx, goalx;
   int xoff;
 };
 
@@ -145,6 +147,13 @@ static inline void load_file(struct bee *bee, const char *filename){
     if(linelen>0)
       memcpy(bee->buf[i].chars , &fcontent[j], linelen);
     bee->buf[i].len = bee->buf[i].cap = linelen;
+    // count numcolumns
+    bee->buf[i].columnlen = 0;
+    bee->buf[i].codepointlen = 0;
+    for(char*c = bee->buf[i].chars; *c!='\0'; c+=bytelen(c)){
+      bee->buf[i].columnlen += columnlen(c);
+      bee->buf[i].codepointlen ++;
+    }
     j += linelen+1;
   }
   free(fcontent);
@@ -192,8 +201,10 @@ static inline void print_screen(const struct bee *bee){
 }
 
 static inline void n_h(struct bee *bee){
-  if(bee->x == 0)
+  if(bee->x == 0){
+    bee->goalx = bee->vx;
     return;
+  }
   bee->bx -= bytelen(current_char_ptr(bee));
   bee->x--;
   char *c = current_char_ptr(bee);
@@ -202,12 +213,15 @@ static inline void n_h(struct bee *bee){
   } else {
     bee->xoff -= columnlen(c);
   }
+  bee->goalx = bee->vx;
 }
 static inline void n_l(struct bee *bee){
   const char *c = current_char_ptr(bee);
   int bl = bytelen(c);
-  if(bee->bx+bl == current_line_ptr(bee)->len)
+  if(bee->bx+bl == current_line_ptr(bee)->len){
+    bee->goalx = bee->vx;
     return;
+  }
   // bee->bx+bl < current_line_ptr(bee)->len
   bee->x++;
   bee->bx += bl;
@@ -219,12 +233,36 @@ static inline void n_l(struct bee *bee){
     bee->xoff += x;
     bee->vx -= x;
   }
+  bee->goalx = bee->vx;
 }
 static inline void n_j(struct bee *bee){
-  if(bee->y+1<screen_height)
+  if(bee->y +1 < screen_height)
     bee->y++;
   else if(bee->yoff + bee->y +1 < bee->buf_len)
     bee->yoff++;
+  
+  // TODO: adjust column position and offset
+  if(bee->goalx >= bee->buf[bee->y].columnlen){
+    char *lastchar = current_line_ptr(bee)->chars
+                     + utf8prev(current_line_ptr(bee)->chars,
+                                current_line_ptr(bee)->len);
+    bee->vx = bee->buf[bee->y].columnlen - columnlen(lastchar);
+    bee->bx = bee->buf[bee->y].len - bytelen(lastchar);
+    bee->x = bee->buf[bee->y].codepointlen - 1; 
+  } else {
+    bee->vx = bee->goalx;
+    //adjust x and bx
+  }
+  //#define MIN(a,b) ((a) < (b) ? (a) : (b))
+  //#define MAX(a,b) ((a) > (b) ? (a) : (b))
+  //bee->vx = MIN(bee->vx, MAX(currentline(bee)->columnlen-1, 0))
+  // TODO: control horizontal scroll
+  char *c = current_char_ptr(bee);
+  if(bee->vx + columnlen(c) > screen_width){
+    int x = bee->vx+columnlen(c) - screen_width;
+    bee->xoff += x;
+    bee->vx -= x;
+  }
 }
 static inline void n_k(struct bee *bee){
   if(bee->y>0)
