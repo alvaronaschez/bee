@@ -114,8 +114,7 @@ static inline int utf8prev(const char* s, int off){
   return utf8prevn(s, off, 1);
 }
 
-static inline int load_file(const char *filename, struct string **buf_out){
-  assert(*buf_out == NULL);
+static inline struct string *load_file(const char *filename, int *len){
   if (filename == NULL) return 0;
   FILE *fp = fopen(filename, "r");
   assert(fp);
@@ -134,9 +133,9 @@ static inline int load_file(const char *filename, struct string **buf_out){
     if(fcontent[i] == '\n') nlines++;
   if(fcontent[fsize-1] != '\n')
     nlines++;
+  *len = nlines;
   // copy all lines from fcontent into buf
-  *buf_out = malloc(nlines * sizeof(struct string));
-  struct string *buf = *buf_out;
+  struct string *buf = malloc(nlines * sizeof(struct string));
   int linelen;
   for(int i = 0, j = 0; i<nlines && j<fsize; i++){
     // count line length
@@ -156,7 +155,8 @@ static inline int load_file(const char *filename, struct string **buf_out){
     j += linelen+1;
   }
   free(fcontent);
-  return nlines;
+  // calle should free buf
+  return buf;
 }
 
 static inline void print_screen(const struct bee *bee){
@@ -328,7 +328,7 @@ int main(int argc, char **argv){
   bee.filename = calloc(strlen(argv[1])+1, sizeof(char));
   strcpy(bee.filename, argv[1]);
 
-  bee.buf_len = load_file(bee.filename, &bee.buf);
+  bee.buf = load_file(bee.filename, &bee.buf_len);
 
   tb_init();
 
