@@ -3,6 +3,7 @@
   h j k l
   d D i I c C a A
   x X
+  zz z<CR>
   #gg #G :#
   gh gj gk gl
   f t F T %
@@ -113,11 +114,9 @@ static inline int utf8prev(const char* s, int off){
   return utf8prevn(s, off, 1);
 }
 
-static inline void load_file(struct bee *bee, const char *filename){
-  assert(bee->filename == NULL);
-  bee->filename = calloc(strlen(filename)+1, sizeof(char));
-  strcpy(bee->filename, filename);
- 
+static inline int load_file(const char *filename, struct string **buf_out){
+  assert(*buf_out == NULL);
+  if (filename == NULL) return 0;
   FILE *fp = fopen(filename, "r");
   assert(fp);
   int res = fseek(fp, 0, SEEK_END);
@@ -135,28 +134,29 @@ static inline void load_file(struct bee *bee, const char *filename){
     if(fcontent[i] == '\n') nlines++;
   if(fcontent[fsize-1] != '\n')
     nlines++;
-  bee->buf_len = nlines;
   // copy all lines from fcontent into buf
-  bee->buf = malloc(nlines * sizeof(struct string));
+  *buf_out = malloc(nlines * sizeof(struct string));
+  struct string *buf = *buf_out;
   int linelen;
   for(int i = 0, j = 0; i<nlines && j<fsize; i++){
     // count line length
     for(linelen = 0; j+linelen<fsize-1 && fcontent[j+linelen]!='\n'; linelen++);
     // copy line in buffer
-    bee->buf[i].chars = calloc(linelen+1, sizeof(char));
+    buf[i].chars = calloc(linelen+1, sizeof(char));
     if(linelen>0)
-      memcpy(bee->buf[i].chars , &fcontent[j], linelen);
-    bee->buf[i].len = bee->buf[i].cap = linelen;
+      memcpy(buf[i].chars , &fcontent[j], linelen);
+    buf[i].len = buf[i].cap = linelen;
     // count numcolumns
-    bee->buf[i].columnlen = 0;
-    bee->buf[i].codepointlen = 0;
-    for(char*c = bee->buf[i].chars; *c!='\0'; c+=bytelen(c)){
-      bee->buf[i].columnlen += columnlen(c);
-      bee->buf[i].codepointlen ++;
+    buf[i].columnlen = 0;
+    buf[i].codepointlen = 0;
+    for(char*c = buf[i].chars; *c!='\0'; c+=bytelen(c)){
+      buf[i].columnlen += columnlen(c);
+      buf[i].codepointlen ++;
     }
     j += linelen+1;
   }
   free(fcontent);
+  return nlines;
 }
 
 static inline void print_screen(const struct bee *bee){
@@ -325,14 +325,18 @@ int main(int argc, char **argv){
   struct bee bee;
   bee_init(&bee);
 
-  load_file(&bee, argv[1]);
+  bee.filename = calloc(strlen(argv[1])+1, sizeof(char));
+  strcpy(bee.filename, argv[1]);
+
+  bee.buf_len = load_file(bee.filename, &bee.buf);
 
   tb_init();
 
-  do{
+  do {
     print_screen(&bee);
-  }while(read_key(&bee));
+  } while(read_key(&bee));
 
   tb_shutdown();
+
   return 0;
 }
