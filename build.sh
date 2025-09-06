@@ -10,4 +10,8 @@ elif [ "$1" = 'tiny' ]; then
 	$CC $CFLAGS bee_tiny.c -o bee
 elif [ "$1" = 'clean' ]; then
 	rm bee
+elif [ "$1" = 'build-debug' ]; then
+	$CC $CFLAGS -g bee.c -o bee 
+elif [ "$1" = 'debug' ]; then
+	gdb -p $(pgrep bee)
 fi

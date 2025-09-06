@@ -243,6 +243,7 @@ static inline void n_l(struct bee *bee){
 
 static inline void colidx_to_byteidx(const struct string *str, int goal_col, int *x, int *col){
   *x = *col = 0;
+  if(str->len==0) return;
   for(;bytelen((char*)str+*x)+*x < str->len && *col < goal_col;
       *x+=bytelen(str->chars+*x), *col+=columnlen(str->chars+*col));
 }
