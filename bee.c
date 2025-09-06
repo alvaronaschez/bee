@@ -21,6 +21,7 @@
 #include <wchar.h>
 #include <locale.h>
 
+#define DEBUG
 #define LOCALE "en_US.UTF-8"
 #define fg_color TB_YELLOW
 #define bg_color TB_BLACK
@@ -197,13 +198,14 @@ static inline void print_screen(const struct bee *bee){
     }
   }
   // print footer
-  tb_printf(0, tb_height() - 1, bg_color, fg_color,
-            //footer_format,
-            debug_footer_format,
-            mode_label[bee->mode], bee->filename,
-            bee->buf_len, bee->y, bee->vx,
-            //);
+#ifdef DEBUG 
+  tb_printf(0, tb_height() - 1, bg_color, fg_color, debug_footer_format,
+            mode_label[bee->mode], bee->filename, bee->buf_len, bee->y, bee->vx,
             bee->bx, bee->leftcol, bee->vxgoal);
+#else
+  tb_printf(0, tb_height() - 1, bg_color, fg_color, footer_format,
+            mode_label[bee->mode], bee->filename, bee->buf_len, bee->y, bee->vx);
+#endif
   // print cursor
   tb_set_cursor(bee->vx - bee->leftcol, bee->y - bee->toprow);
   tb_present();
