@@ -182,7 +182,6 @@ static inline void print_screen(const struct bee *bee){
   tb_clear();
   // print file
   for(int j=0; j < screen_height && j+bee->toprow < bee->buf_len; j++){
-    //tb_print(0,j,fg_color ,bg_color, bee->buf[bee->toprow+j].chars);
     int vi=0, bi=0;
     while(bi < bee->buf[bee->toprow+j].len && vi < bee->leftcol+screen_width){
       char *c = bee->buf[bee->toprow+j].chars + bi;
