@@ -48,16 +48,16 @@ struct bee {
   struct string *buf;
   int buf_len;
   char *filename;
-  int y, yoff;
-  int x, bx, vx, goalx;
-  int xoff;
+
+  int toprow, leftcol;
+  int y, bx, vx, vxgoal;
 };
 
 static inline struct string *current_line_ptr(struct bee* bee){
-  return &bee->buf[bee->yoff+bee->y];
+  return &bee->buf[bee->y];
 }
 static inline char *current_char_ptr(struct bee* bee){
-  return bee->buf[bee->yoff+bee->y].chars + bee->bx;
+  return bee->buf[bee->y].chars + bee->bx;
 }
 
 #define bytelen utf8len
@@ -159,118 +159,107 @@ static inline struct string *load_file(const char *filename, int *len){
   return buf;
 }
 
+static inline void print_tb(int x, int y, char* c){
+  switch(bytelen(c)){
+    case 1:
+      if(*c=='\t')
+	tb_print(x, y, fg_color, bg_color, "        ");
+      else
+	tb_set_cell(x, y, *c, fg_color, bg_color);
+      break;
+    // TODO
+    case 2:
+      tb_set_cell(x, y, '*', fg_color, bg_color);
+      break;
+    case 3:
+      break;
+    case 4:
+      break;
+  }
+}
+
 static inline void print_screen(const struct bee *bee){
   tb_clear();
-  for(int j=bee->yoff; j< bee->yoff+screen_height && j<bee->buf_len; j++){
+  // print file
+  for(int j=0; j < screen_height && j+bee->toprow < bee->buf_len; j++){
+    //tb_print(0,j,fg_color ,bg_color, bee->buf[bee->toprow+j].chars);
     int vi=0, bi=0;
-    char *c;
-    while(vi < bee->xoff){
-      c = bee->buf[j].chars + bi;
-      vi += columnlen(c);
-      bi += bytelen(c);
-    }
-    while(bi<bee->buf[j].len && vi<bee->xoff+screen_width){
-      c = bee->buf[j].chars + bi;
-      switch(bytelen(c)){
-        case 1:
-          if(*c=='\t')
-            tb_print(vi - bee->xoff, j - bee->yoff, fg_color, bg_color, "        ");
-          else
-            tb_set_cell(vi - bee->xoff, j - bee->yoff, *c, fg_color, bg_color);
-          break;
-        // TODO
-        case 2:
-          tb_set_cell(vi - bee->xoff, j -bee->yoff, '*', fg_color, bg_color);
-          break;
-        case 3:
-          break;
-        case 4:
-          break;
+    while(bi < bee->buf[bee->toprow+j].len && vi < bee->leftcol+screen_width){
+      char *c = bee->buf[bee->toprow+j].chars + bi;
+      if(vi >= bee->leftcol){
+        print_tb(vi - bee->leftcol, j, c);
       }
-      vi += columnlen(c);
       bi += bytelen(c);
+      vi += columnlen(c);
     }
   }
   // print footer
   tb_printf(0, tb_height() - 1, bg_color, fg_color,
             footer_format, mode_label[bee->mode], bee->filename,
-            bee->buf_len, bee->yoff + bee->y, bee->x);
+            bee->buf_len, bee->y, bee->vx);
   // print cursor
-  tb_set_cursor(bee->vx, bee->y);
+  tb_set_cursor(bee->vx - bee->leftcol, bee->y - bee->toprow);
   tb_present();
+}
+ 
+static inline void autoscroll_x(struct bee* bee){
+  // cursor too far to the right
+  if(bee->vx+columnlen(current_char_ptr(bee)) > screen_width){
+    int x = bee->vx+columnlen(current_char_ptr(bee)) - screen_width;
+    bee->leftcol += x;
+    bee->vx -= x;
+  }
+  // cursor too far to the left
+  if(bee->vx < bee->leftcol){
+    bee->leftcol = bee->vx;
+  }
 }
 
 static inline void n_h(struct bee *bee){
-  if(bee->x == 0){
-    bee->goalx = bee->vx;
-    return;
+  if(bee->bx > 0){
+    bee->bx = utf8prev(current_line_ptr(bee)->chars, bee->bx);
+    bee->vx -= columnlen(current_char_ptr(bee));
+    autoscroll_x(bee);
   }
-  bee->bx -= bytelen(current_char_ptr(bee));
-  bee->x--;
-  char *c = current_char_ptr(bee);
-  if(bee->vx >= columnlen(c)){
-    bee->vx -= columnlen(c);
-  } else {
-    bee->xoff -= columnlen(c);
-  }
-  bee->goalx = bee->vx;
+  bee->vxgoal = bee->vx;
 }
 static inline void n_l(struct bee *bee){
-  const char *c = current_char_ptr(bee);
-  int bl = bytelen(c);
-  if(bee->bx+bl == current_line_ptr(bee)->len){
-    bee->goalx = bee->vx;
-    return;
+  if(bee->bx + bytelen(current_char_ptr(bee)) < current_line_ptr(bee)->len){
+    bee->vx += columnlen(current_char_ptr(bee));
+    bee->bx += bytelen(current_char_ptr(bee));
+    autoscroll_x(bee);
   }
-  // bee->bx+bl < current_line_ptr(bee)->len
-  bee->x++;
-  bee->bx += bl;
-  bee->vx += columnlen(c);
-  c += bl;
-
-  if(bee->vx+columnlen(c) > screen_width){
-    int x = bee->vx+columnlen(c) - screen_width;
-    bee->xoff += x;
-    bee->vx -= x;
-  }
-  bee->goalx = bee->vx;
+  bee->vxgoal = bee->vx;
 }
+
+static inline void colidx_to_byteidx(const struct string *str, int goal_col, int *x, int *col){
+  *x = *col = 0;
+  for(;bytelen((char*)str+*x)+*x < str->len && *col < goal_col;
+      *x+=bytelen(str->chars+*x), *col+=columnlen(str->chars+*col));
+}
+
 static inline void n_j(struct bee *bee){
-  if(bee->y +1 < screen_height)
+  if(bee->y - bee->toprow +1 < screen_height)
     bee->y++;
-  else if(bee->yoff + bee->y +1 < bee->buf_len)
-    bee->yoff++;
-  
-  // TODO: adjust column position and offset
-  if(bee->goalx >= bee->buf[bee->y].columnlen){
-    char *lastchar = current_line_ptr(bee)->chars
-                     + utf8prev(current_line_ptr(bee)->chars,
-                                current_line_ptr(bee)->len);
-    bee->vx = bee->buf[bee->y].columnlen - columnlen(lastchar);
-    bee->bx = bee->buf[bee->y].len - bytelen(lastchar);
-    bee->x = bee->buf[bee->y].codepointlen - 1; 
-  } else {
-    bee->vx = bee->goalx;
-    //adjust x and bx
-  }
-  //#define MIN(a,b) ((a) < (b) ? (a) : (b))
-  //#define MAX(a,b) ((a) > (b) ? (a) : (b))
-  //bee->vx = MIN(bee->vx, MAX(currentline(bee)->columnlen-1, 0))
-  // TODO: control horizontal scroll
-  char *c = current_char_ptr(bee);
-  if(bee->vx + columnlen(c) > screen_width){
-    int x = bee->vx+columnlen(c) - screen_width;
-    bee->xoff += x;
-    bee->vx -= x;
-  }
+  else if(bee->y +1 < bee->buf_len)
+    bee->toprow++;
+
+  // adjust column position
+  colidx_to_byteidx(current_line_ptr(bee), bee->vxgoal, &bee->bx, &bee->vx);
+  // adjust horizontal-offset/scroll
+  autoscroll_x(bee);
 }
 static inline void n_k(struct bee *bee){
   if(bee->y>0)
     bee->y--;
   else {
-    if(bee->yoff>0)
-      bee->yoff--;
+    if(bee->toprow>0)
+      bee->toprow--;
   }
+  // adjust column position
+  colidx_to_byteidx(current_line_ptr(bee), bee->vxgoal, &bee->bx, &bee->vx);
+  // adjust horizontal-offset/scroll
+  autoscroll_x(bee);
 }
 static inline void n_x(struct bee *bee){
 }
@@ -309,8 +298,8 @@ static inline void bee_init(struct bee *bee){
   bee->filename = NULL;
   bee->buf = NULL;
   bee->buf_len = 0;
-  bee->x = bee->y = 0;
-  bee->xoff = bee->yoff = 0;
+  bee->y = 0;
+  bee->leftcol = bee->toprow = 0;
   bee->bx = bee->vx = 0;
 }
 
