@@ -213,10 +213,9 @@ static inline void print_screen(const struct bee *bee){
  
 static inline void autoscroll_x(struct bee* bee){
   // cursor too far to the right
-  if(bee->vx + columnlen(current_char_ptr(bee)) > screen_width + bee->leftcol){
-    int x = bee->vx+columnlen(current_char_ptr(bee)) - screen_width - bee->leftcol;
-    bee->leftcol += x;
-    //bee->vx -= x;
+  while(bee->vx + columnlen(current_char_ptr(bee)) > screen_width + bee->leftcol){
+    // TODO
+    bee->leftcol += columnlen(current_line_ptr(bee)->chars+bee->leftcol);
   }
   // cursor too far to the left
   if(bee->vx < bee->leftcol){
@@ -247,6 +246,9 @@ static inline void vx_to_bx(const struct string *str, int vxgoal, int *bx, int *
   for(;bytelen(str->chars+*bx)+*bx < str->len && *vx < vxgoal;
       *bx+=bytelen(str->chars+*bx), *vx+=columnlen(str->chars+*vx));
 }
+
+// TODO
+static inline void bx_to_vx(
 
 static inline void n_j(struct bee *bee){
   if(bee->y +1 == bee->buf_len) return;
