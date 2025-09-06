@@ -249,9 +249,10 @@ static inline void colidx_to_byteidx(const struct string *str, int goal_col, int
 }
 
 static inline void n_j(struct bee *bee){
-  if(bee->y - bee->toprow +1 < screen_height)
-    bee->y++;
-  else if(bee->y +1 < bee->buf_len)
+  if(bee->y +1 == bee->buf_len) return;
+  
+  bee->y++;
+  if(bee->y == bee->toprow+screen_height)
     bee->toprow++;
 
   // adjust column position
@@ -260,12 +261,12 @@ static inline void n_j(struct bee *bee){
   autoscroll_x(bee);
 }
 static inline void n_k(struct bee *bee){
-  if(bee->y>0)
-    bee->y--;
-  else {
-    if(bee->toprow>0)
+  if(bee->y == 0) return;
+
+  bee->y--;
+  if(bee->toprow == bee->y)
       bee->toprow--;
-  }
+
   // adjust column position
   colidx_to_byteidx(current_line_ptr(bee), bee->vxgoal, &bee->bx, &bee->vx);
   // adjust horizontal-offset/scroll
