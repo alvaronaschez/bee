@@ -26,7 +26,8 @@
 #define bg_color TB_BLACK
 #define tablen 8
 #define footerheight 1
-const char *footer_format = "<%s> \"%s\"  [=%d] L%d C%d";
+//const char *footer_format = "<%s> \"%s\"  [=%d] L%d C%d";
+const char *footer_format = "<%s> \"%s\"  [=%d] L%d C%d bC%d leftcol-%d vxgoal-%d";
 #define screen_height (tb_height() - footerheight)
 #define screen_width (tb_width())
 
@@ -111,7 +112,10 @@ static inline int utf8prevn(const char* s, int off, int n){
   return off;
 }
 static inline int utf8prev(const char* s, int off){
-  return utf8prevn(s, off, 1);
+  //return utf8prevn(s, off, 1);
+  for(;(s[off]&0xC0) == 0x80; off--);
+  off--;
+  return off;
 }
 
 static inline struct string *load_file(const char *filename, int *len){
@@ -195,7 +199,8 @@ static inline void print_screen(const struct bee *bee){
   // print footer
   tb_printf(0, tb_height() - 1, bg_color, fg_color,
             footer_format, mode_label[bee->mode], bee->filename,
-            bee->buf_len, bee->y, bee->vx);
+            bee->buf_len, bee->y, bee->vx,
+            bee->bx, bee->leftcol, bee->vxgoal);
   // print cursor
   tb_set_cursor(bee->vx - bee->leftcol, bee->y - bee->toprow);
   tb_present();
@@ -203,10 +208,10 @@ static inline void print_screen(const struct bee *bee){
  
 static inline void autoscroll_x(struct bee* bee){
   // cursor too far to the right
-  if(bee->vx+columnlen(current_char_ptr(bee)) > screen_width){
-    int x = bee->vx+columnlen(current_char_ptr(bee)) - screen_width;
+  if(bee->vx + columnlen(current_char_ptr(bee)) > screen_width + bee->leftcol){
+    int x = bee->vx+columnlen(current_char_ptr(bee)) - screen_width - bee->leftcol;
     bee->leftcol += x;
-    bee->vx -= x;
+    //bee->vx -= x;
   }
   // cursor too far to the left
   if(bee->vx < bee->leftcol){
@@ -299,7 +304,7 @@ static inline void bee_init(struct bee *bee){
   bee->buf_len = 0;
   bee->y = 0;
   bee->leftcol = bee->toprow = 0;
-  bee->bx = bee->vx = 0;
+  bee->bx = bee->vx = bee->vxgoal = 0;
 }
 
 int main(int argc, char **argv){
