@@ -26,8 +26,8 @@
 #define bg_color TB_BLACK
 #define tablen 8
 #define footerheight 1
-//const char *footer_format = "<%s> \"%s\"  [=%d] L%d C%d";
-const char *footer_format = "<%s> \"%s\"  [=%d] L%d C%d bC%d leftcol-%d vxgoal-%d";
+const char *footer_format = "<%s> \"%s\"  [=%d] L%d C%d";
+const char *debug_footer_format = "<%s> \"%s\"  [=%d] L%d C%d bx:%d leftcol:%d vxgoal:%d";
 #define screen_height (tb_height() - footerheight)
 #define screen_width (tb_width())
 
@@ -198,8 +198,11 @@ static inline void print_screen(const struct bee *bee){
   }
   // print footer
   tb_printf(0, tb_height() - 1, bg_color, fg_color,
-            footer_format, mode_label[bee->mode], bee->filename,
+            //footer_format,
+            debug_footer_format,
+            mode_label[bee->mode], bee->filename,
             bee->buf_len, bee->y, bee->vx,
+            //);
             bee->bx, bee->leftcol, bee->vxgoal);
   // print cursor
   tb_set_cursor(bee->vx - bee->leftcol, bee->y - bee->toprow);
