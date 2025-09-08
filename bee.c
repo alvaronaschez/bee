@@ -107,10 +107,10 @@ static inline int utf8prevn(const char* s, int off, int n){
   return off;
 }
 static inline int utf8prev(const char* s, int off){
-  //return utf8prevn(s, off, 1);
   if(*s == '\0') return 0;
-  else off--;
-  for(;(s[off]&0xC0) == 0x80; off--);
+  off--;
+  while((s[off]&0xC0) == 0x80)
+    off--;
   return off;
 }
 
@@ -205,37 +205,8 @@ static inline void print_screen(const struct bee *bee){
   tb_set_cursor(bee->vx - bee->leftcol, bee->y - bee->toprow);
   tb_present();
 }
- 
-static inline void autoscroll_x(struct bee* bee){
-  // cursor too far to the right
-  while(bee->vx + columnlen(current_char_ptr(bee), 0) > screen_width + bee->leftcol){
-    // TODO
-    bee->leftcol += columnlen(current_line_ptr(bee)->chars+bee->leftcol, 0);
-  }
-  // cursor too far to the left
-  if(bee->vx < bee->leftcol){
-    bee->leftcol = bee->vx;
-  }
-}
 
-static inline void n_h(struct bee *bee){
-  if(bee->bx > 0){
-    bee->bx = utf8prev(current_line_ptr(bee)->chars, bee->bx);
-    bee->vx -= columnlen(current_char_ptr(bee), bee->vx);
-    autoscroll_x(bee);
-  }
-  bee->vxgoal = bee->vx;
-}
-static inline void n_l(struct bee *bee){
-  if(bee->bx + bytelen(current_char_ptr(bee)) < current_line_ptr(bee)->len){
-    bee->vx += columnlen(current_char_ptr(bee), bee->vx);
-    bee->bx += bytelen(current_char_ptr(bee));
-    autoscroll_x(bee);
-  }
-  bee->vxgoal = bee->vx;
-}
-
-static inline void vx_to_bx(const char *str, int vxgoal, int *bx, int *vx){
+ static inline void vx_to_bx(const char *str, int vxgoal, int *bx, int *vx){
   *bx = *vx = 0;
   int bxold;
   if(*str == '\0') return;
@@ -248,7 +219,43 @@ static inline void vx_to_bx(const char *str, int vxgoal, int *bx, int *vx){
     *vx += columnlen(str+bxold, *vx);
   }
 }
+
 //static inline void bx_to_vx(const char *str, int vxgoal, int *bx, int *vx){}
+
+static inline void autoscroll_x(struct bee* bee){
+  // cursor too far to the right
+  if(bee->vx + columnlen(current_char_ptr(bee), bee->vx) > screen_width + bee->leftcol){
+    // TODO
+    int bx_leftcol, vx_leftcol;
+    vx_to_bx(bee->buf[bee->y].chars, bee->leftcol, &bx_leftcol, &vx_leftcol);
+    while(bee->vx + columnlen(current_char_ptr(bee), bee->vx) > screen_width + bee->leftcol){
+      bee->leftcol += columnlen(bee->buf[bee->y].chars + bx_leftcol, bee->leftcol);
+      bx_leftcol += bytelen(bee->buf[bee->y].chars + bx_leftcol);
+    }
+  }
+  // cursor too far to the left
+  if(bee->vx < bee->leftcol){
+    bee->leftcol = bee->vx;
+  }
+}
+
+static inline void n_h(struct bee *bee){
+  if(bee->bx > 0){
+    //bee->bx = utf8prev(bee->buf[bee->y].chars, bee->bx);
+    //bee->vx -= columnlen(bee->buf[bee->y].chars+bee->bx, bee->vx);
+    vx_to_bx(current_line_ptr(bee)->chars, bee->vx-1, &bee->bx, &bee->vx);
+    autoscroll_x(bee);
+  }
+  bee->vxgoal = bee->vx;
+}
+static inline void n_l(struct bee *bee){
+  if(bee->bx + bytelen(current_char_ptr(bee)) < current_line_ptr(bee)->len){
+    bee->vx += columnlen(current_char_ptr(bee), bee->vx);
+    bee->bx += bytelen(current_char_ptr(bee));
+    autoscroll_x(bee);
+  }
+  bee->vxgoal = bee->vx;
+}
 
 static inline void n_j(struct bee *bee){
   if(bee->y +1 == bee->buf_len) return;
