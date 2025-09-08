@@ -240,15 +240,20 @@ static inline void n_l(struct bee *bee){
   bee->vxgoal = bee->vx;
 }
 
-static inline void vx_to_bx(const struct string *str, int vxgoal, int *bx, int *vx){
-  *bx = *vx = 0;
-  if(str->len==0) return;
-  for(;bytelen(str->chars+*bx)+*bx < str->len && *vx < vxgoal;
-      *bx+=bytelen(str->chars+*bx), *vx+=columnlen(str->chars+*vx));
-}
-
+//static inline void vx_to_bx(const struct string *str, int vxgoal, int *bx, int *vx){
+//  *bx = *vx = 0;
+//  if(str->len==0) return;
+//  for(;bytelen(str->chars+*bx)+*bx < str->len && *vx < vxgoal;
+//      *bx+=bytelen(str->chars+*bx), *vx+=columnlen(str->chars+*vx));
+//}
 // TODO
-static inline void bx_to_vx(
+static inline void vx_to_bx(const char *str, int vxgoal, int *bx, int *vx){
+  *bx = *vx = 0;
+  while(str[*bx] != '\0' && *vx < vxgoal){
+    *bx+=bytelen(str+*bx); *vx+=columnlen(str+*bx);
+  }
+}
+//static inline void bx_to_vx(const char *str, int vxgoal, int *bx, int *vx){ }
 
 static inline void n_j(struct bee *bee){
   if(bee->y +1 == bee->buf_len) return;
@@ -258,7 +263,7 @@ static inline void n_j(struct bee *bee){
   bee->y++;
 
   // adjust column position
-  vx_to_bx(current_line_ptr(bee), bee->vxgoal, &bee->bx, &bee->vx);
+  vx_to_bx(current_line_ptr(bee)->chars, bee->vxgoal, &bee->bx, &bee->vx);
   // adjust horizontal-offset/scroll
   autoscroll_x(bee);
 }
@@ -270,7 +275,7 @@ static inline void n_k(struct bee *bee){
   bee->y--;
 
   // adjust column position
-  vx_to_bx(current_line_ptr(bee), bee->vxgoal, &bee->bx, &bee->vx);
+  vx_to_bx(current_line_ptr(bee)->chars, bee->vxgoal, &bee->bx, &bee->vx);
   // adjust horizontal-offset/scroll
   autoscroll_x(bee);
 }
