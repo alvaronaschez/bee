@@ -175,7 +175,12 @@ static inline void print_tb(int x, int y, char* c){
       break;
     // TODO
     case 2:
-      tb_set_cell(x, y, '*', fg_color, bg_color);
+      ;
+      wchar_t wc;
+      mbstowcs(&wc, c, 1);
+      //tb_set_cell(x, y, '*', fg_color, bg_color);
+      tb_set_cell(x, y, wc, fg_color, bg_color);
+      //tb_set_cell_ex(x, y, c, 2, fg_color, bg_color);
       break;
     case 3:
       break;
@@ -193,6 +198,10 @@ static inline void print_screen(const struct bee *bee){
       char *c = bee->buf[bee->toprow+j].chars + bi;
       if(vi >= bee->leftcol){
         print_tb(vi - bee->leftcol, j, c);
+      } else if(vi + columnlen(c) > bee->leftcol){ // vi < bee->leftcol
+        for(int i=0; i< vi + columnlen(c) - bee->leftcol; i++){
+          tb_print(bee->leftcol + i, j, bg_color, fg_color, " ");
+        }
       }
       bi += bytelen(c);
       vi += columnlen(c);
