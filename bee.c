@@ -253,8 +253,16 @@ static inline void n_l(struct bee *bee){
 static inline void vx_to_bx(const char *str, int vxgoal, int *bx, int *vx){
   *bx = *vx = 0;
   if(*str == '\0') return;
-  while(str[*bx + bytelen(str+*bx)]  != '\0' && *vx < vxgoal){
-    *bx+=bytelen(str+*bx); *vx+=columnlen(str+*bx);
+  //while(str[*bx + bytelen(str+*bx)]  != '\0' && *vx+columnlen(str+*bx+bytelen(str+*bx)) <= vxgoal){
+  //  *bx+=bytelen(str+*bx); *vx+=columnlen(str+*bx);
+  //}
+  while(1){
+    if(str[*bx+bytelen(str+*bx)] == '\0') return;
+    if(*vx == vxgoal) return; 
+    if(*vx+columnlen(str+*bx) > vxgoal) return;
+    int bxold = *bx;
+    *bx += bytelen(str+*bx);
+    *vx += columnlen(str+bxold);
   }
 }
 //static inline void bx_to_vx(const char *str, int vxgoal, int *bx, int *vx){}
