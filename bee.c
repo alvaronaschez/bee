@@ -241,9 +241,14 @@ static inline void autoscroll_x(struct bee* bee){
 
 static inline void n_h(struct bee *bee){
   if(bee->bx > 0){
-    //bee->bx = utf8prev(bee->buf[bee->y].chars, bee->bx);
-    //bee->vx -= columnlen(bee->buf[bee->y].chars+bee->bx, bee->vx);
-    vx_to_bx(current_line_ptr(bee)->chars, bee->vx-1, &bee->bx, &bee->vx);
+    //vx_to_bx(current_line_ptr(bee)->chars, bee->vx-1, &bee->bx, &bee->vx);
+    // that would be enough, the following is an optimization
+    if ( *(current_char_ptr(bee)-1) == '\t' ) {
+      vx_to_bx(current_line_ptr(bee)->chars, bee->vx-1, &bee->bx, &bee->vx);
+    } else {
+      bee->bx = utf8prev(current_line_ptr(bee)->chars, bee->bx);
+      bee->vx -= columnlen(current_char_ptr(bee), bee->vx);
+    }
     autoscroll_x(bee);
   }
   bee->vxgoal = bee->vx;
