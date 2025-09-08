@@ -71,20 +71,14 @@ static inline int utf8len(const char* s){
   return 0;
 }
 
-static inline int columnlen(const char* s){
+static inline int columnlen(const char* s, int col_off){
   if(*s=='\t')
-    return tablen;
+    return tablen-(col_off%tablen);
   wchar_t wc;
   mbtowc(&wc, s, MB_CUR_MAX);
   int width = wcwidth(wc);
   assert(width>=0); // -1 -> invalid utf8 char
   return 1;
-}
-
-int columndist(const char* s, int off1, int off2){
-  if(off1 == off2) return 0;
-  if(off1 > off2) return columndist(s, off2, off1);
-  return columnlen(s+off1) + columndist(s, off1 +utf8len(s+off1), off2);
 }
 
 static inline int utf8prevn(const char* s, int off, int n);
@@ -155,7 +149,7 @@ static inline struct string *load_file(const char *filename, int *len){
     buf[i].columnlen = 0;
     buf[i].codepointlen = 0;
     for(char*c = buf[i].chars; *c!='\0'; c+=bytelen(c)){
-      buf[i].columnlen += columnlen(c);
+      buf[i].columnlen += columnlen(c, buf[i].columnlen);
       buf[i].codepointlen ++;
     }
     j += linelen+1;
@@ -166,26 +160,17 @@ static inline struct string *load_file(const char *filename, int *len){
 }
 
 static inline void print_tb(int x, int y, char* c){
-  switch(bytelen(c)){
-    case 1:
+  if(bytelen(c)==1){
       if(*c=='\t')
 	tb_print(x, y, fg_color, bg_color, "        ");
       else
 	tb_set_cell(x, y, *c, fg_color, bg_color);
-      break;
-    // TODO
-    case 2:
-      ;
+  } else {
       wchar_t wc;
       mbstowcs(&wc, c, 1);
       //tb_set_cell(x, y, '*', fg_color, bg_color);
       tb_set_cell(x, y, wc, fg_color, bg_color);
       //tb_set_cell_ex(x, y, c, 2, fg_color, bg_color);
-      break;
-    case 3:
-      break;
-    case 4:
-      break;
   }
 }
 
@@ -198,13 +183,13 @@ static inline void print_screen(const struct bee *bee){
       char *c = bee->buf[bee->toprow+j].chars + bi;
       if(vi >= bee->leftcol){
         print_tb(vi - bee->leftcol, j, c);
-      } else if(vi + columnlen(c) > bee->leftcol){ // vi < bee->leftcol
-        for(int i=0; i< vi + columnlen(c) - bee->leftcol; i++){
+      } else if(vi + columnlen(c, vi) > bee->leftcol){ // vi < bee->leftcol
+        for(int i=0; i< vi + columnlen(c, vi) - bee->leftcol; i++){
           tb_print(bee->leftcol + i, j, bg_color, fg_color, " ");
         }
       }
       bi += bytelen(c);
-      vi += columnlen(c);
+      vi += columnlen(c, vi);
     }
   }
   // print footer
@@ -223,9 +208,9 @@ static inline void print_screen(const struct bee *bee){
  
 static inline void autoscroll_x(struct bee* bee){
   // cursor too far to the right
-  while(bee->vx + columnlen(current_char_ptr(bee)) > screen_width + bee->leftcol){
+  while(bee->vx + columnlen(current_char_ptr(bee), 0) > screen_width + bee->leftcol){
     // TODO
-    bee->leftcol += columnlen(current_line_ptr(bee)->chars+bee->leftcol);
+    bee->leftcol += columnlen(current_line_ptr(bee)->chars+bee->leftcol, 0);
   }
   // cursor too far to the left
   if(bee->vx < bee->leftcol){
@@ -236,14 +221,14 @@ static inline void autoscroll_x(struct bee* bee){
 static inline void n_h(struct bee *bee){
   if(bee->bx > 0){
     bee->bx = utf8prev(current_line_ptr(bee)->chars, bee->bx);
-    bee->vx -= columnlen(current_char_ptr(bee));
+    bee->vx -= columnlen(current_char_ptr(bee), bee->vx);
     autoscroll_x(bee);
   }
   bee->vxgoal = bee->vx;
 }
 static inline void n_l(struct bee *bee){
   if(bee->bx + bytelen(current_char_ptr(bee)) < current_line_ptr(bee)->len){
-    bee->vx += columnlen(current_char_ptr(bee));
+    bee->vx += columnlen(current_char_ptr(bee), bee->vx);
     bee->bx += bytelen(current_char_ptr(bee));
     autoscroll_x(bee);
   }
@@ -252,17 +237,15 @@ static inline void n_l(struct bee *bee){
 
 static inline void vx_to_bx(const char *str, int vxgoal, int *bx, int *vx){
   *bx = *vx = 0;
+  int bxold;
   if(*str == '\0') return;
-  //while(str[*bx + bytelen(str+*bx)]  != '\0' && *vx+columnlen(str+*bx+bytelen(str+*bx)) <= vxgoal){
-  //  *bx+=bytelen(str+*bx); *vx+=columnlen(str+*bx);
-  //}
   while(1){
     if(str[*bx+bytelen(str+*bx)] == '\0') return;
     if(*vx == vxgoal) return; 
-    if(*vx+columnlen(str+*bx) > vxgoal) return;
-    int bxold = *bx;
+    if(*vx+columnlen(str+*bx, *vx) > vxgoal) return;
+    bxold = *bx;
     *bx += bytelen(str+*bx);
-    *vx += columnlen(str+bxold);
+    *vx += columnlen(str+bxold, *vx);
   }
 }
 //static inline void bx_to_vx(const char *str, int vxgoal, int *bx, int *vx){}
