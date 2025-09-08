@@ -114,8 +114,9 @@ static inline int utf8prevn(const char* s, int off, int n){
 }
 static inline int utf8prev(const char* s, int off){
   //return utf8prevn(s, off, 1);
+  if(*s == '\0') return 0;
+  else off--;
   for(;(s[off]&0xC0) == 0x80; off--);
-  off--;
   return off;
 }
 
@@ -240,20 +241,14 @@ static inline void n_l(struct bee *bee){
   bee->vxgoal = bee->vx;
 }
 
-//static inline void vx_to_bx(const struct string *str, int vxgoal, int *bx, int *vx){
-//  *bx = *vx = 0;
-//  if(str->len==0) return;
-//  for(;bytelen(str->chars+*bx)+*bx < str->len && *vx < vxgoal;
-//      *bx+=bytelen(str->chars+*bx), *vx+=columnlen(str->chars+*vx));
-//}
-// TODO
 static inline void vx_to_bx(const char *str, int vxgoal, int *bx, int *vx){
   *bx = *vx = 0;
-  while(str[*bx] != '\0' && *vx < vxgoal){
+  if(*str == '\0') return;
+  while(str[*bx + bytelen(str+*bx)]  != '\0' && *vx < vxgoal){
     *bx+=bytelen(str+*bx); *vx+=columnlen(str+*bx);
   }
 }
-//static inline void bx_to_vx(const char *str, int vxgoal, int *bx, int *vx){ }
+//static inline void bx_to_vx(const char *str, int vxgoal, int *bx, int *vx){}
 
 static inline void n_j(struct bee *bee){
   if(bee->y +1 == bee->buf_len) return;
