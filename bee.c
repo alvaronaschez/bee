@@ -318,8 +318,7 @@ static inline char normal_read_key(struct bee *bee){
   struct tb_event ev;
   tb_poll_event(&ev);
   if(ev.type == TB_EVENT_RESIZE) resize(bee);
-  else if(ev.ch!=0)
-  switch(ev.ch){
+  else if(ev.ch!=0) switch(ev.ch){
   case 'Z':
     tb_poll_event(&ev);
     return ev.ch != 'Q';
@@ -337,8 +336,7 @@ static inline char normal_read_key(struct bee *bee){
   case 'x':
     n_x(bee); break;
   }
-  else if(ev.key!=0)
-  switch(ev.key){
+  else if(ev.key!=0) switch(ev.key){
   case TB_KEY_CTRL_Q:
     return 0;
   }
@@ -353,13 +351,11 @@ static inline void i_esc(struct bee *bee){
 static inline char insert_read_key(struct bee *bee){
   struct tb_event ev;
   tb_poll_event(&ev);
-  if(ev.type == TB_EVENT_RESIZE)
-    resize(bee);
-  else if(ev.key!=0)
-    switch(ev.key){
-    case TB_KEY_ESC:
-      i_esc(bee); break;
-    }
+  if(ev.type == TB_EVENT_RESIZE) resize(bee);
+  else if(ev.key!=0) switch(ev.key){
+  case TB_KEY_ESC:
+    i_esc(bee); break;
+  }
   return 1;
 }
 
@@ -370,13 +366,11 @@ static inline void c_esc(struct bee *bee){
 static inline char command_read_key(struct bee *bee){
   struct tb_event ev;
   tb_poll_event(&ev);
-  if(ev.type == TB_EVENT_RESIZE)
-    resize(bee);
-  else if(ev.key!=0)
-    switch(ev.key){
-    case TB_KEY_ESC:
-      c_esc(bee); break;
-    }
+  if(ev.type == TB_EVENT_RESIZE) resize(bee);
+  else if(ev.key!=0) switch(ev.key){
+  case TB_KEY_ESC:
+    c_esc(bee); break;
+  }
   return 1;
 }
 
