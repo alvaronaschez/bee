@@ -27,9 +27,8 @@
 #define bg_color TB_BLACK
 #define tablen 8
 #define footerheight 1
-//const char *footer_format = "<%s> [%s] l%d/%d C%d";
-const char *footer_format = "<%s> [%s] (%d/%d, %d)";
-const char *debug_footer_format = "<%s> [%s]  L%d/%d C%d bx:%d leftcol:%d vxgoal:%d";
+const char *footer_format = "<%s>  \"%s\"  [=%d]  C%d L%d";
+const char *debug_footer_format = "<%s> \"%s\" [=%d] C%d L%d";
 #define screen_height (tb_height() - footerheight)
 #define screen_width (tb_width())
 
@@ -213,13 +212,12 @@ static inline void print_screen(const struct bee *bee){
     }
   }
   // print footer
-#ifdef DEBUG 
-  tb_printf(0, tb_height() - 1, bg_color, fg_color, debug_footer_format,
-            mode_label[bee->mode], bee->filename, bee->y, bee->buf_len, bee->vx,
-            bee->bx, bee->leftcol, bee->vxgoal);
-#else
+#ifndef DEBUG 
   tb_printf(0, tb_height() - 1, bg_color, fg_color, footer_format,
-            mode_label[bee->mode], bee->filename, bee->y, bee->buf_len, bee->vx);
+            mode_label[bee->mode], bee->filename, bee->buf_len, bee->y, bee->vx);
+#else
+  tb_printf(0, tb_height() - 1, bg_color, fg_color, debug_footer_format,
+            mode_label[bee->mode], bee->filename, bee->buf_len, bee->y, bee->vx);
 #endif
   // print cursor
   tb_set_cursor(bee->vx - bee->leftcol, bee->y - bee->toprow);
@@ -428,8 +426,12 @@ int main(int argc, char **argv){
   struct bee bee;
   bee_init(&bee);
 
-  bee.filename = calloc(strlen(argv[1])+1, sizeof(char));
-  strcpy(bee.filename, argv[1]);
+  bee.filename = realpath(argv[1], NULL);
+  if(bee.filename == NULL) {
+    printf("wrong file name\naborting\n");
+    return 1;
+  }
+
 
   bee.buf = load_file(bee.filename, &bee.buf_len);
 
