@@ -307,12 +307,25 @@ static inline void n_x(struct bee *bee){
   }
 }
 
+static inline void n_i(struct bee *bee){
+  bee->mode = INSERT;
+}
+
+static inline void resize(const struct bee *bee){
+}
+
 static inline char normal_read_key(struct bee *bee){
   struct tb_event ev;
   tb_poll_event(&ev);
-  if(ev.ch == 'q')
-    return 0;
+  if(ev.type == TB_EVENT_RESIZE) resize(bee);
+  else if(ev.ch!=0)
   switch(ev.ch){
+  case 'Z':
+    tb_poll_event(&ev);
+    return ev.ch != 'Q';
+    //return ev.ch == 'Q' ? 0 : 1;
+  case 'i':
+    n_i(bee); break;
   case 'h':
     n_h(bee); break;
   case 'j':
@@ -324,6 +337,46 @@ static inline char normal_read_key(struct bee *bee){
   case 'x':
     n_x(bee); break;
   }
+  else if(ev.key!=0)
+  switch(ev.key){
+  case TB_KEY_CTRL_Q:
+    return 0;
+  }
+  return 1;
+}
+
+
+static inline void i_esc(struct bee *bee){
+  bee->mode = NORMAL;
+}
+
+static inline char insert_read_key(struct bee *bee){
+  struct tb_event ev;
+  tb_poll_event(&ev);
+  if(ev.type == TB_EVENT_RESIZE)
+    resize(bee);
+  else if(ev.key!=0)
+    switch(ev.key){
+    case TB_KEY_ESC:
+      i_esc(bee); break;
+    }
+  return 1;
+}
+
+static inline void c_esc(struct bee *bee){
+  bee->mode = NORMAL;
+}
+
+static inline char command_read_key(struct bee *bee){
+  struct tb_event ev;
+  tb_poll_event(&ev);
+  if(ev.type == TB_EVENT_RESIZE)
+    resize(bee);
+  else if(ev.key!=0)
+    switch(ev.key){
+    case TB_KEY_ESC:
+      c_esc(bee); break;
+    }
   return 1;
 }
 
@@ -331,6 +384,10 @@ static inline char read_key(struct bee *bee){
   switch(bee->mode){
   case NORMAL:
     return normal_read_key(bee);
+  case INSERT:
+    return insert_read_key(bee);
+  case COMMAND:
+    return command_read_key(bee);
   default:
     return 0;
   }
@@ -363,6 +420,8 @@ int main(int argc, char **argv){
   bee.buf = load_file(bee.filename, &bee.buf_len);
 
   tb_init();
+  //tb_set_input_mode(TB_INPUT_ESC); // default
+  //tb_set_input_mode(TB_INPUT_ALT);
 
   do {
     print_screen(&bee);
