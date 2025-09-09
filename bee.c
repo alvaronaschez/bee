@@ -41,8 +41,6 @@ char *mode_label[] = {"N", "I", "C"};
 struct string {
   char *chars; // null terminated
   int len, cap; // length and capacity
-  int columnlen; // length in number of columns in the screen
-  int codepointlen; // number of unicode codepoints
 };
 
 struct bee {
@@ -53,7 +51,33 @@ struct bee {
 
   int toprow, leftcol;
   int y, bx, vx, vxgoal;
+
+  struct string ins_buf;
 };
+
+void string_init(struct string *s){
+  s->cap = 64;
+  s->len = 0;
+  s->chars = calloc(s->cap+1, sizeof(char));
+}
+
+void string_destroy(struct string *s){
+  free(s->chars);
+  s->chars = NULL;
+  s->cap = 0;
+  s->len = 0;
+}
+
+void string_append(struct string *s, const char *t){
+  if(s->len + (int)strlen(t) > s->cap){
+    char *aux = s->chars;
+    s->chars = malloc(s->cap*2);
+    strcpy(s->chars, aux);
+    s->cap *= 2;
+  }
+  strcat(s->chars + s->len, t);
+  s->len += strlen(t);
+}
 
 static inline struct string *current_line_ptr(struct bee* bee){
   return &bee->buf[bee->y];
@@ -145,13 +169,7 @@ static inline struct string *load_file(const char *filename, int *len){
     if(linelen>0)
       memcpy(buf[i].chars , &fcontent[j], linelen);
     buf[i].len = buf[i].cap = linelen;
-    // count numcolumns
-    buf[i].columnlen = 0;
-    buf[i].codepointlen = 0;
-    for(char*c = buf[i].chars; *c!='\0'; c+=bytelen(c)){
-      buf[i].columnlen += columnlen(c, buf[i].columnlen);
-      buf[i].codepointlen ++;
-    }
+
     j += linelen+1;
   }
   free(fcontent);
