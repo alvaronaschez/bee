@@ -287,6 +287,24 @@ static inline void n_k(struct bee *bee){
   autoscroll_x(bee);
 }
 static inline void n_x(struct bee *bee){
+  int len = bee->buf[bee->y].len;
+  if(len==0) return;
+  char *s = bee->buf[bee->y].chars;
+  memmove(
+    //dest
+    s + bee->bx,
+    // src
+    s + bee->bx + bytelen(s+bee->bx),
+    // n
+    len - (bee->bx + bytelen(s+bee->bx))
+    );
+  bee->buf[bee->y].len -= bytelen(s+bee->bx);
+  current_line_ptr(bee)->chars[current_line_ptr(bee)->len] = '\0';
+  // if bx at the end of the line bx--
+  if(bee->bx == bee->buf[bee->y].len){
+    //bee->bx = utf8prev(s, bee->bx);
+    vx_to_bx(current_line_ptr(bee)->chars, bee->vx==0? 0:bee->vx-1, &bee->bx, &bee->vx);
+  }
 }
 
 static inline char normal_read_key(struct bee *bee){
