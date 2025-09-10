@@ -192,24 +192,28 @@ static inline void print_tb(int x, int y, char* c){
   }
 }
 
+static inline void print_row(const struct bee *bee, int j){
+  int vi=0, bi=0;
+  while(bee->buf[bee->toprow+j].chars[bi] && vi < bee->leftcol+screen_width){
+    char *c = bee->buf[bee->toprow+j].chars + bi;
+    if(vi >= bee->leftcol){
+      print_tb(vi - bee->leftcol, j, c);
+    } else if(vi + columnlen(c, vi) > bee->leftcol){ // vi < bee->leftcol
+      for(int i=0; i< vi + columnlen(c, vi) - bee->leftcol; i++){
+        tb_print(bee->leftcol + i, j, bg_color, fg_color, " ");
+      }
+    }
+    bi += bytelen(c);
+    vi += columnlen(c, vi);
+  }
+}
+
 static inline void print_screen(const struct bee *bee){
   tb_clear();
   // print file
   for(int j=0; j < screen_height && j+bee->toprow < bee->buf_len; j++){
-    int vi=0, bi=0;
     //while(bi < bee->buf[bee->toprow+j].len && vi < bee->leftcol+screen_width){
-    while(bee->buf[bee->toprow+j].chars[bi] && vi < bee->leftcol+screen_width){
-      char *c = bee->buf[bee->toprow+j].chars + bi;
-      if(vi >= bee->leftcol){
-        print_tb(vi - bee->leftcol, j, c);
-      } else if(vi + columnlen(c, vi) > bee->leftcol){ // vi < bee->leftcol
-        for(int i=0; i< vi + columnlen(c, vi) - bee->leftcol; i++){
-          tb_print(bee->leftcol + i, j, bg_color, fg_color, " ");
-        }
-      }
-      bi += bytelen(c);
-      vi += columnlen(c, vi);
-    }
+    print_row(bee, j);
   }
   // print footer
 #ifndef DEBUG 
