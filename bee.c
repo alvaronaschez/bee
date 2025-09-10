@@ -199,6 +199,7 @@ static inline void print_row(const struct bee *bee, int j){
     if(vi >= bee->leftcol){
       print_tb(vi - bee->leftcol, j, c);
     } else if(vi + columnlen(c, vi) > bee->leftcol){ // vi < bee->leftcol
+      // print codepoints that occupy more than one column as blank
       for(int i=0; i< vi + columnlen(c, vi) - bee->leftcol; i++){
         tb_print(bee->leftcol + i, j, bg_color, fg_color, " ");
       }
@@ -207,15 +208,24 @@ static inline void print_row(const struct bee *bee, int j){
     vi += columnlen(c, vi);
   }
 }
-
-static inline void print_screen(const struct bee *bee){
-  tb_clear();
-  // print file
-  for(int j=0; j < screen_height && j+bee->toprow < bee->buf_len; j++){
-    //while(bi < bee->buf[bee->toprow+j].len && vi < bee->leftcol+screen_width){
-    print_row(bee, j);
+static inline void print_row_til(const struct bee *bee, int j, int til){
+  int vi=0, bi=0;
+  while(bee->buf[bee->toprow+j].chars[bi] && vi < bee->leftcol+screen_width
+      && vi < til){
+    char *c = bee->buf[bee->toprow+j].chars + bi;
+    if(vi >= bee->leftcol){
+      print_tb(vi - bee->leftcol, j, c);
+    } else if(vi + columnlen(c, vi) > bee->leftcol){ // vi < bee->leftcol
+      // print codepoints that occupy more than one column as blank
+      for(int i=0; i< vi + columnlen(c, vi) - bee->leftcol; i++){
+        tb_print(bee->leftcol + i, j, bg_color, fg_color, " ");
+      }
+    }
+    bi += bytelen(c);
+    vi += columnlen(c, vi);
   }
-  // print footer
+}
+static inline void print_footer(const struct bee *bee){
 #ifndef DEBUG 
   tb_printf(0, tb_height() - 1, bg_color, fg_color, footer_format,
             mode_label[bee->mode], bee->filename, bee->buf_len, bee->y, bee->vx);
@@ -223,8 +233,32 @@ static inline void print_screen(const struct bee *bee){
   tb_printf(0, tb_height() - 1, bg_color, fg_color, debug_footer_format,
             mode_label[bee->mode], bee->filename, bee->buf_len, bee->y, bee->vx);
 #endif
-  // print cursor
+}
+
+static inline void print_cursor(const struct bee *bee){
   tb_set_cursor(bee->vx - bee->leftcol, bee->y - bee->toprow);
+}
+
+static inline void print_screen(const struct bee *bee){
+  // TODO
+  tb_clear();
+  if(bee->mode == INSERT){
+    int j;
+    // before insert buffer
+    for(j=0; j < screen_height && j+bee->toprow < bee->buf_len 
+	&& j + bee->toprow < bee->y; j++)
+      print_row(bee, j);
+    // insert buffer
+   print_row_til(bee, j, bee->vx); 
+    // after insert buffer
+     for(j=bee->y+1 - bee->toprow; j < screen_height && j+bee->toprow < bee->buf_len; j++)
+      print_row(bee, j);
+  }
+  else for(int j=0; j < screen_height && j+bee->toprow < bee->buf_len; j++)
+    print_row(bee, j);
+  
+  print_footer(bee);
+  print_cursor(bee);
   tb_present();
 }
 
@@ -247,7 +281,6 @@ static inline void print_screen(const struct bee *bee){
 static inline void autoscroll_x(struct bee* bee){
   // cursor too far to the right
   if(bee->vx + columnlen(current_char_ptr(bee), bee->vx) > screen_width + bee->leftcol){
-    // TODO
     int bx_leftcol, vx_leftcol;
     vx_to_bx(bee->buf[bee->y].chars, bee->leftcol, &bx_leftcol, &vx_leftcol);
     while(bee->vx + columnlen(current_char_ptr(bee), bee->vx) > screen_width + bee->leftcol){
