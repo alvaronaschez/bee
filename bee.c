@@ -1,16 +1,3 @@
-/*
-  minimal features:
-  h j k l
-  d D i I c C a A
-  x X
-  zz z<CR>
-  #gg #G :#
-  gh gj gk gl
-  f t F T %
-  :w :q :q! :#
-  / . , ; n N
-*/
-
 #define TB_IMPL
 #include "termbox2.h"
 
@@ -21,14 +8,12 @@
 #include <wchar.h>
 #include <locale.h>
 
-//#define DEBUG
 #define LOCALE "en_US.UTF-8"
 #define fg_color TB_YELLOW
 #define bg_color TB_BLACK
 #define tablen 8
 #define footerheight 1
 const char *footer_format = "<%s>  \"%s\"  [=%d]  C%d L%d";
-const char *debug_footer_format = "<%s> \"%s\" [=%d] C%d L%d";
 #define screen_height (tb_height() - footerheight)
 #define screen_width (tb_width())
 
@@ -95,6 +80,8 @@ static inline int utf8len(const char* s){
   return 0;
 }
 
+// TODO: remove the col_off parameter
+// the signature should be "int columnlen(const char*)"
 static inline int columnlen(const char* s, int col_off){
   if(*s=='\t')
     return tablen-(col_off%tablen);
@@ -224,13 +211,8 @@ static inline void print_row_til(const struct bee *bee, int j, int til){
   }
 }
 static inline void print_footer(const struct bee *bee){
-#ifndef DEBUG 
   tb_printf(0, tb_height() - 1, bg_color, fg_color, footer_format,
             mode_label[bee->mode], bee->filename, bee->buf_len, bee->y, bee->vx);
-#else
-  tb_printf(0, tb_height() - 1, bg_color, fg_color, debug_footer_format,
-            mode_label[bee->mode], bee->filename, bee->buf_len, bee->y, bee->vx);
-#endif
 }
 
 static inline void print_insert_buffer(const struct bee *bee, int *x, int *y){
