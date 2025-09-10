@@ -235,8 +235,8 @@ static inline void print_footer(const struct bee *bee){
 #endif
 }
 
-static inline void print_cursor(const struct bee *bee){
-  tb_set_cursor(bee->vx - bee->leftcol, bee->y - bee->toprow);
+static inline void print_insert_buffer(const struct bee *bee, int *x, int *y){
+
 }
 
 static inline void print_screen(const struct bee *bee){
@@ -250,15 +250,20 @@ static inline void print_screen(const struct bee *bee){
       print_row(bee, j);
     // insert buffer
    print_row_til(bee, j, bee->vx); 
+   int xx, yy; xx = bee->vx; yy = bee->y;
+   print_insert_buffer(bee, &xx, &yy);
+   tb_set_cursor(xx - bee->leftcol, yy - bee->toprow);
     // after insert buffer
      for(j=bee->y+1 - bee->toprow; j < screen_height && j+bee->toprow < bee->buf_len; j++)
       print_row(bee, j);
   }
-  else for(int j=0; j < screen_height && j+bee->toprow < bee->buf_len; j++)
-    print_row(bee, j);
+  else {
+    for(int j=0; j < screen_height && j+bee->toprow < bee->buf_len; j++)
+      print_row(bee, j);
+    tb_set_cursor(bee->vx - bee->leftcol, bee->y - bee->toprow);
+  }
   
   print_footer(bee);
-  print_cursor(bee);
   tb_present();
 }
 
