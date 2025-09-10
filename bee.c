@@ -178,51 +178,49 @@ static inline struct string *load_file(const char *filename, int *len){
 }
 
 static inline void print_tb(int x, int y, char* c){
-  if(bytelen(c)==1){
-      if(*c=='\t')
-	tb_print(x, y, fg_color, bg_color, "        ");
-      else
-	tb_set_cell(x, y, *c, fg_color, bg_color);
-  } else {
+  if(*c == '\t')
+    tb_print(x, y, fg_color, bg_color, "        ");
+  else if(bytelen(c)==1)
+    tb_set_cell(x, y, *c, fg_color, bg_color);
+   else {
       wchar_t wc;
       mbstowcs(&wc, c, 1);
-      //tb_set_cell(x, y, '*', fg_color, bg_color);
       tb_set_cell(x, y, wc, fg_color, bg_color);
-      //tb_set_cell_ex(x, y, c, 2, fg_color, bg_color);
   }
 }
 
+static inline char *skip_n_col(char *s, int n, int *remainder){
+  if(s==NULL || *s=='\0') return NULL;
+  while(n > 0){
+    *remainder = n - columnlen(s, 0);
+    n -= columnlen(s, 0);
+    s += bytelen(s);
+    if(*s=='\0') return NULL;
+  }
+  return s;
+}
+
 static inline void print_row(const struct bee *bee, int j){
-  int vi=0, bi=0;
-  while(bee->buf[bee->toprow+j].chars[bi] && vi < bee->leftcol+screen_width){
-    char *c = bee->buf[bee->toprow+j].chars + bi;
-    if(vi >= bee->leftcol){
-      print_tb(vi - bee->leftcol, j, c);
-    } else if(vi + columnlen(c, vi) > bee->leftcol){ // vi < bee->leftcol
-      // print codepoints that occupy more than one column as blank
-      for(int i=0; i< vi + columnlen(c, vi) - bee->leftcol; i++){
-        tb_print(bee->leftcol + i, j, bg_color, fg_color, " ");
-      }
-    }
-    bi += bytelen(c);
-    vi += columnlen(c, vi);
+  char *s = bee->buf[bee->toprow+j].chars;
+  int remainder;
+  s = skip_n_col(s, bee->leftcol, &remainder);
+  if(s == NULL) return;
+  for(int i=0; i<screen_width && *s!='\0';){
+    print_tb(i, j, s);
+    i += columnlen(s, 0);
+    s += bytelen(s);
   }
 }
+
 static inline void print_row_til(const struct bee *bee, int j, int til){
-  int vi=0, bi=0;
-  while(bee->buf[bee->toprow+j].chars[bi] && vi < bee->leftcol+screen_width
-      && vi < til){
-    char *c = bee->buf[bee->toprow+j].chars + bi;
-    if(vi >= bee->leftcol){
-      print_tb(vi - bee->leftcol, j, c);
-    } else if(vi + columnlen(c, vi) > bee->leftcol){ // vi < bee->leftcol
-      // print codepoints that occupy more than one column as blank
-      for(int i=0; i< vi + columnlen(c, vi) - bee->leftcol; i++){
-        tb_print(bee->leftcol + i, j, bg_color, fg_color, " ");
-      }
-    }
-    bi += bytelen(c);
-    vi += columnlen(c, vi);
+  char *s = bee->buf[bee->toprow+j].chars;
+  int remainder;
+  s = skip_n_col(s, bee->leftcol, &remainder);
+  if(s == NULL) return;
+  for(int i=0; i<screen_width && *s!='\0' && i<til;){
+    print_tb(i, j, s);
+    i += columnlen(s, 0);
+    s += bytelen(s);
   }
 }
 static inline void print_footer(const struct bee *bee){
