@@ -14,6 +14,7 @@
 #define tablen 8
 #define footerheight 1
 const char *footer_format = "<%s>  \"%s\"  [=%d]  C%d L%d";
+//const char *debug_footer_format = "<%s>  \"%s\"  [=%d]  C%d L%d xx %d";
 #define screen_height (tb_height() - footerheight)
 #define screen_width (tb_width())
 
@@ -169,7 +170,7 @@ static inline void print_tb(int x, int y, char* c){
     tb_print(x, y, fg_color, bg_color, "        ");
   else if(bytelen(c)==1)
     tb_set_cell(x, y, *c, fg_color, bg_color);
-   else {
+  else {
       wchar_t wc;
       mbstowcs(&wc, c, 1);
       tb_set_cell(x, y, wc, fg_color, bg_color);
@@ -177,7 +178,8 @@ static inline void print_tb(int x, int y, char* c){
 }
 
 static inline char *skip_n_col(char *s, int n, int *remainder){
-  if(s==NULL || *s=='\0') return NULL;
+  *remainder = 0;
+  if(s==NULL || s[0]=='\0') return NULL;
   while(n > 0){
     *remainder = n - columnlen(s, 0);
     n -= columnlen(s, 0);
@@ -210,6 +212,16 @@ static inline void print_row_til(const struct bee *bee, int j, int til){
     s += bytelen(s);
   }
 }
+
+static inline void println(int x, int y, char* s, int maxx){
+  if(s == NULL) return;
+  while(x<maxx && *s != '\0'){
+    print_tb(x, y, s);
+    x += columnlen(s, 0);
+    s += bytelen(s);
+  }
+}
+
 static inline void print_footer(const struct bee *bee){
   tb_printf(0, tb_height() - 1, bg_color, fg_color, footer_format,
             mode_label[bee->mode], bee->filename, bee->buf_len, bee->y, bee->vx);
@@ -222,24 +234,37 @@ static inline void print_insert_buffer(const struct bee *bee, int *x, int *y){
 static inline void print_screen(const struct bee *bee){
   // TODO
   tb_clear();
+  int remainder;
+  char *s;
   if(bee->mode == INSERT){
-    int j;
     // before insert buffer
-    for(j=0; j < screen_height && j+bee->toprow < bee->buf_len 
-	&& j + bee->toprow < bee->y; j++)
-      print_row(bee, j);
+    for(int j=0; j<bee->buf_len && j<bee->y; j++){
+      s = skip_n_col(bee->buf[bee->toprow+j].chars, bee->leftcol, &remainder);
+      println(remainder, j, s, screen_width);
+    }
+
     // insert buffer
-   print_row_til(bee, j, bee->vx); 
-   int xx, yy; xx = bee->vx; yy = bee->y;
-   print_insert_buffer(bee, &xx, &yy);
-   tb_set_cursor(xx - bee->leftcol, yy - bee->toprow);
-    // after insert buffer
-     for(j=bee->y+1 - bee->toprow; j < screen_height && j+bee->toprow < bee->buf_len; j++)
-      print_row(bee, j);
+    //s = skip_n_col(bee->buf[bee->y].chars, bee->leftcol, &remainder);
+    //println(remainder, bee->y, bee->buf[bee->y].chars, bee->vx);
+    //int xx = bee->vx-bee->leftcol; // relative to the screen
+    //int yy = bee->y-bee->toprow; // relative to the screen
+    //print_insert_buffer(bee, &xx, &yy);
+    //println(xx, yy, bee->buf[bee->toprow+yy].chars + bee->bx, screen_width);
+    //tb_set_cursor(xx, yy);
+
+    //// after insert buffer
+    //for(int j = yy+1; j<screen_height && j < bee->buf_len; j++){
+    //  s = skip_n_col(bee->buf[bee->toprow+j].chars, bee->leftcol, &remainder);
+    //  println(0, j, bee->buf[bee->y].chars, screen_width);
+    //}
   }
-  else {
-    for(int j=0; j < screen_height && j+bee->toprow < bee->buf_len; j++)
-      print_row(bee, j);
+  else { // mode != INSERT
+    for(int j=0; j < screen_height && j+bee->toprow < bee->buf_len; j++){
+      s = skip_n_col(bee->buf[bee->toprow+j].chars, bee->leftcol, &remainder);
+      //s = bee->buf[bee->toprow+j].chars; remainder = 0;
+      if(s)
+      println(remainder, j, s, screen_width);
+    }
     tb_set_cursor(bee->vx - bee->leftcol, bee->y - bee->toprow);
   }
   
