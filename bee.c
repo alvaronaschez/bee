@@ -244,13 +244,13 @@ static inline void print_screen(const struct bee *bee){
     }
 
     // insert buffer
-    //s = skip_n_col(bee->buf[bee->y].chars, bee->leftcol, &remainder);
-    //println(remainder, bee->y, bee->buf[bee->y].chars, bee->vx);
-    //int xx = bee->vx-bee->leftcol; // relative to the screen
+    s = skip_n_col(bee->buf[bee->y].chars, bee->leftcol, &remainder);
+    println(remainder, bee->y, bee->buf[bee->y].chars, bee->vx);
+    int xx = bee->vx-bee->leftcol; // relative to the screen
     int yy = bee->y - bee->toprow; // relative to the screen
-    //print_insert_buffer(bee, &xx, &yy);
-    //println(xx, yy, bee->buf[bee->toprow+yy].chars + bee->bx, screen_width);
-    //tb_set_cursor(xx, yy);
+    print_insert_buffer(bee, &xx, &yy);
+    println(xx, yy, bee->buf[bee->toprow+yy].chars + bee->bx, screen_width);
+    tb_set_cursor(xx, yy);
 
     // after insert buffer
     for(int j = yy+1; j<screen_height && j < bee->buf_len; j++){
