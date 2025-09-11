@@ -228,7 +228,8 @@ static inline void print_footer(const struct bee *bee){
 }
 
 static inline void print_insert_buffer(const struct bee *bee, int *x, int *y){
-
+  println(*x, *y, "*", screen_width);
+  *x = *x+1;
 }
 
 static inline void print_screen(const struct bee *bee){
@@ -246,7 +247,7 @@ static inline void print_screen(const struct bee *bee){
     // insert buffer
     s = skip_n_col(bee->buf[bee->y].chars, bee->leftcol, &remainder);
     println(remainder, bee->y, bee->buf[bee->y].chars, bee->vx);
-    int xx = bee->vx-bee->leftcol; // relative to the screen
+    int xx = bee->vx - bee->leftcol; // relative to the screen
     int yy = bee->y - bee->toprow; // relative to the screen
     print_insert_buffer(bee, &xx, &yy);
     println(xx, yy, bee->buf[bee->toprow+yy].chars + bee->bx, screen_width);
