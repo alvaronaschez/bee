@@ -9,12 +9,10 @@
 #include <locale.h>
 
 #define LOCALE "en_US.UTF-8"
-#define fg_color TB_YELLOW
-#define bg_color TB_BLACK
+#define fg_color TB_BLACK
+#define bg_color TB_WHITE
 #define tablen 8
 #define footerheight 1
-const char *footer_format = "<%s>  \"%s\"  [=%d]  C%d L%d";
-//const char *debug_footer_format = "<%s>  \"%s\"  [=%d]  C%d L%d xx %d";
 #define screen_height (tb_height() - footerheight)
 #define screen_width (tb_width())
 
@@ -222,18 +220,20 @@ static inline void println(int x, int y, char* s, int maxx){
   }
 }
 
+const char *footer_format = "<%s>  \"%s\"  [=%d]  C%d L%d %s";
 static inline void print_footer(const struct bee *bee){
+  for(int x=0; x<tb_width(); x++)
+    tb_print(x, tb_height()-1, bg_color, fg_color, " ");
   tb_printf(0, tb_height() - 1, bg_color, fg_color, footer_format,
-            mode_label[bee->mode], bee->filename, bee->buf_len, bee->y, bee->vx);
+            mode_label[bee->mode], bee->filename, bee->buf_len, bee->y, bee->vx, bee->ins_buf.chars);
 }
 
 static inline void print_insert_buffer(const struct bee *bee, int *x, int *y){
-  println(*x, *y, "*", screen_width);
-  *x = *x+1;
+  println(*x, *y, bee->ins_buf.chars, screen_width);
+  *x = *x+bee->ins_buf.len;
 }
 
 static inline void print_screen(const struct bee *bee){
-  // TODO
   tb_clear();
   int remainder;
   char *s;
@@ -374,6 +374,7 @@ static inline void n_x(struct bee *bee){
 }
 
 static inline void n_i(struct bee *bee){
+  string_init(&bee->ins_buf);
   bee->mode = INSERT;
 }
 
@@ -412,6 +413,7 @@ static inline char normal_read_key(struct bee *bee){
 
 static inline void i_esc(struct bee *bee){
   bee->mode = NORMAL;
+  string_destroy(&bee->ins_buf);
 }
 
 static inline char insert_read_key(struct bee *bee){
@@ -421,6 +423,11 @@ static inline char insert_read_key(struct bee *bee){
   else if(ev.key!=0) switch(ev.key){
   case TB_KEY_ESC:
     i_esc(bee); break;
+  }
+  else if(ev.ch){
+    char s[7];
+    tb_utf8_unicode_to_char(s, ev.ch);
+    string_append(&bee->ins_buf, s);
   }
   return 1;
 }
@@ -461,6 +468,7 @@ static inline void bee_init(struct bee *bee){
   bee->y = 0;
   bee->leftcol = bee->toprow = 0;
   bee->bx = bee->vx = bee->vxgoal = 0;
+  bee->ins_buf.chars = "*";
 }
 
 int main(int argc, char **argv){
@@ -484,6 +492,7 @@ int main(int argc, char **argv){
   bee.buf = load_file(bee.filename, &bee.buf_len);
 
   tb_init();
+  tb_set_clear_attrs(fg_color, bg_color);
   //tb_set_input_mode(TB_INPUT_ESC); // default
   //tb_set_input_mode(TB_INPUT_ALT);
 
