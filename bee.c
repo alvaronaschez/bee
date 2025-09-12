@@ -79,11 +79,10 @@ static inline int utf8len(const char* s){
   return 0;
 }
 
-// TODO: remove the col_off parameter
-// the signature should be "int columnlen(const char*)"
 static inline int columnlen(const char* s, int col_off){
+  // we need to know the col_off in order to compute the length of the tab char
   if(*s=='\t')
-    return tablen-(col_off%tablen);
+    return tablen-col_off%tablen;
   wchar_t wc;
   mbtowc(&wc, s, MB_CUR_MAX);
   int width = wcwidth(wc);
@@ -164,9 +163,10 @@ static inline struct string *load_file(const char *filename, int *len){
 }
 
 static inline void print_tb(int x, int y, char* c){
+  // print nothing, it doesn't matter
   if(*c == '\t')
-    tb_print(x, y, fg_color, bg_color, "        ");
-  else if(bytelen(c)==1)
+    return;
+  if(bytelen(c)==1)
     tb_set_cell(x, y, *c, fg_color, bg_color);
   else {
       wchar_t wc;
@@ -179,6 +179,8 @@ static inline char *skip_n_col(char *s, int n, int *remainder){
   *remainder = 0;
   if(s==NULL || s[0]=='\0') return NULL;
   while(n > 0){
+    // TODO: fix columnlen call
+    // Second argument should be the current columnt in absolute terms
     *remainder = n - columnlen(s, 0);
     n -= columnlen(s, 0);
     s += bytelen(s);
@@ -187,35 +189,35 @@ static inline char *skip_n_col(char *s, int n, int *remainder){
   return s;
 }
 
-static inline void print_row(const struct bee *bee, int j){
-  char *s = bee->buf[bee->toprow+j].chars;
-  int remainder;
-  s = skip_n_col(s, bee->leftcol, &remainder);
-  if(s == NULL) return;
-  for(int i=0; i<screen_width && *s!='\0';){
-    print_tb(i, j, s);
-    i += columnlen(s, 0);
-    s += bytelen(s);
-  }
-}
-
-static inline void print_row_til(const struct bee *bee, int j, int til){
-  char *s = bee->buf[bee->toprow+j].chars;
-  int remainder;
-  s = skip_n_col(s, bee->leftcol, &remainder);
-  if(s == NULL) return;
-  for(int i=0; i<screen_width && *s!='\0' && i<til;){
-    print_tb(i, j, s);
-    i += columnlen(s, 0);
-    s += bytelen(s);
-  }
-}
+//static inline void print_row(const struct bee *bee, int j){
+//  char *s = bee->buf[bee->toprow+j].chars;
+//  int remainder;
+//  s = skip_n_col(s, bee->leftcol, &remainder);
+//  if(s == NULL) return;
+//  for(int i=0; i<screen_width && *s!='\0';){
+//    print_tb(i, j, s);
+//    i += columnlen(s, 0);
+//    s += bytelen(s);
+//  }
+//}
+//
+//static inline void print_row_til(const struct bee *bee, int j, int til){
+//  char *s = bee->buf[bee->toprow+j].chars;
+//  int remainder;
+//  s = skip_n_col(s, bee->leftcol, &remainder);
+//  if(s == NULL) return;
+//  for(int i=0; i<screen_width && *s!='\0' && i<til;){
+//    print_tb(i, j, s);
+//    i += columnlen(s, 0);
+//    s += bytelen(s);
+//  }
+//}
 
 static inline void println(int x, int y, char* s, int maxx){
   if(s == NULL) return;
   while(x<maxx && *s != '\0'){
     print_tb(x, y, s);
-    x += columnlen(s, 0);
+    x += columnlen(s, x);
     s += bytelen(s);
   }
 }
