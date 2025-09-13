@@ -324,25 +324,21 @@ static inline void n_l(struct bee *bee){
 
 static inline void n_j(struct bee *bee){
   if(bee->y +1 == bee->buf_len) return;
-  
   bee->y++;
-  autoscroll_y(bee);
 
   // adjust column position
   vx_to_bx(current_line_ptr(bee)->chars, bee->vxgoal, &bee->bx, &bee->vx);
-  // adjust horizontal-offset/scroll
-  autoscroll_x(bee);
+
+  autoscroll(bee);
 }
 static inline void n_k(struct bee *bee){
   if(bee->y == 0) return;
-
   bee->y--;
-  autoscroll_y(bee);
 
   // adjust column position
   vx_to_bx(current_line_ptr(bee)->chars, bee->vxgoal, &bee->bx, &bee->vx);
-  // adjust horizontal-offset/scroll
-  autoscroll_x(bee);
+
+  autoscroll(bee);
 }
 static inline void n_x(struct bee *bee){
   int len = bee->buf[bee->y].len;
