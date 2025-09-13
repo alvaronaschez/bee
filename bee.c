@@ -37,6 +37,7 @@ struct bee {
   int y, bx, vx, vxgoal;
 
   struct string ins_buf;
+  int ins_y, ins_bx, ins_vx;
 };
 
 void string_init(struct string *s){
@@ -189,30 +190,6 @@ static inline char *skip_n_col(char *s, int n, int *remainder){
   return s;
 }
 
-//static inline void print_row(const struct bee *bee, int j){
-//  char *s = bee->buf[bee->toprow+j].chars;
-//  int remainder;
-//  s = skip_n_col(s, bee->leftcol, &remainder);
-//  if(s == NULL) return;
-//  for(int i=0; i<screen_width && *s!='\0';){
-//    print_tb(i, j, s);
-//    i += columnlen(s, 0);
-//    s += bytelen(s);
-//  }
-//}
-//
-//static inline void print_row_til(const struct bee *bee, int j, int til){
-//  char *s = bee->buf[bee->toprow+j].chars;
-//  int remainder;
-//  s = skip_n_col(s, bee->leftcol, &remainder);
-//  if(s == NULL) return;
-//  for(int i=0; i<screen_width && *s!='\0' && i<til;){
-//    print_tb(i, j, s);
-//    i += columnlen(s, 0);
-//    s += bytelen(s);
-//  }
-//}
-
 static inline void println(int x, int y, char* s, int maxx){
   if(s == NULL) return;
   while(x<maxx && *s != '\0'){
@@ -222,12 +199,14 @@ static inline void println(int x, int y, char* s, int maxx){
   }
 }
 
-const char *footer_format = "<%s>  \"%s\"  [=%d]  C%d L%d %s";
+const char *footer_format = "<%s>  \"%s\"  [=%d]  C%d L%d";
 static inline void print_footer(const struct bee *bee){
+  uintattr_t bg = fg_color;
+  uintattr_t fg = TB_MAGENTA;
   for(int x=0; x<tb_width(); x++)
-    tb_print(x, tb_height()-1, bg_color, fg_color, " ");
-  tb_printf(0, tb_height() - 1, bg_color, fg_color, footer_format,
-            mode_label[bee->mode], bee->filename, bee->buf_len, bee->y, bee->vx, bee->ins_buf.chars);
+    tb_print(x, tb_height()-1, fg, bg, " ");
+  tb_printf(0, tb_height() - 1, fg, bg, footer_format,
+            mode_label[bee->mode], bee->filename, bee->buf_len, bee->y, bee->vx);
 }
 
 static inline void print_insert_buffer(const struct bee *bee, int *x, int *y){
@@ -241,18 +220,18 @@ static inline void print_screen(const struct bee *bee){
   char *s;
   if(bee->mode == INSERT){
     // before insert buffer
-    for(int j=0; j<bee->buf_len && j<bee->y; j++){
+    for(int j=0; j<bee->buf_len && j<bee->ins_y; j++){
       s = skip_n_col(bee->buf[bee->toprow+j].chars, bee->leftcol, &remainder);
       println(remainder, j, s, screen_width);
     }
 
     // insert buffer
-    s = skip_n_col(bee->buf[bee->y].chars, bee->leftcol, &remainder);
-    println(remainder, bee->y, bee->buf[bee->y].chars, bee->vx);
-    int xx = bee->vx - bee->leftcol; // relative to the screen
-    int yy = bee->y - bee->toprow; // relative to the screen
+    s = skip_n_col(bee->buf[bee->ins_y].chars, bee->leftcol, &remainder);
+    println(remainder, bee->ins_y, bee->buf[bee->ins_y].chars, bee->ins_vx);
+    int xx = bee->ins_vx - bee->leftcol; // relative to the screen
+    int yy = bee->ins_y - bee->toprow; // relative to the screen
     print_insert_buffer(bee, &xx, &yy);
-    println(xx, yy, bee->buf[bee->toprow+yy].chars + bee->bx, screen_width);
+    println(xx, yy, bee->buf[bee->toprow+yy].chars + bee->ins_bx, screen_width);
     tb_set_cursor(xx, yy);
 
     // after insert buffer
@@ -377,6 +356,9 @@ static inline void n_x(struct bee *bee){
 
 static inline void n_i(struct bee *bee){
   string_init(&bee->ins_buf);
+  bee->ins_y = bee->y;
+  bee->ins_bx = bee->bx;
+  bee->ins_vx = bee->vx;
   bee->mode = INSERT;
 }
 
@@ -470,7 +452,7 @@ static inline void bee_init(struct bee *bee){
   bee->y = 0;
   bee->leftcol = bee->toprow = 0;
   bee->bx = bee->vx = bee->vxgoal = 0;
-  bee->ins_buf.chars = "*";
+  bee->ins_buf.chars = NULL;
 }
 
 int main(int argc, char **argv){
