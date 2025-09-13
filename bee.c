@@ -281,9 +281,22 @@ static inline void autoscroll_x(struct bee* bee){
     }
   }
   // cursor too far to the left
-  if(bee->vx < bee->leftcol){
+  if(bee->vx < bee->leftcol)
     bee->leftcol = bee->vx;
-  }
+}
+
+static inline void autoscroll_y(struct bee* bee){
+  // cursor too far up
+  if(bee->toprow > bee->y)
+    bee->toprow = bee->y;
+  // cursor too far down
+  if(bee->y - bee->toprow >= screen_height)
+    bee->toprow = bee->y-screen_height+1;
+}
+
+static inline void autoscroll(struct bee *bee){
+  autoscroll_y(bee);
+  autoscroll_x(bee);
 }
 
 static inline void n_h(struct bee *bee){
@@ -312,9 +325,8 @@ static inline void n_l(struct bee *bee){
 static inline void n_j(struct bee *bee){
   if(bee->y +1 == bee->buf_len) return;
   
-  if(bee->y +1 == bee->toprow+screen_height)
-    bee->toprow++;
   bee->y++;
+  autoscroll_y(bee);
 
   // adjust column position
   vx_to_bx(current_line_ptr(bee)->chars, bee->vxgoal, &bee->bx, &bee->vx);
@@ -324,9 +336,8 @@ static inline void n_j(struct bee *bee){
 static inline void n_k(struct bee *bee){
   if(bee->y == 0) return;
 
-  if(bee->toprow == bee->y)
-      bee->toprow--;
   bee->y--;
+  autoscroll_y(bee);
 
   // adjust column position
   vx_to_bx(current_line_ptr(bee)->chars, bee->vxgoal, &bee->bx, &bee->vx);
@@ -471,7 +482,6 @@ int main(int argc, char **argv){
     printf("wrong file name\naborting\n");
     return 1;
   }
-
 
   bee.buf = load_file(bee.filename, &bee.buf_len);
 
