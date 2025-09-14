@@ -399,17 +399,43 @@ static inline char normal_read_key(struct bee *bee){
 
 
 static inline void i_esc(struct bee *bee){
-  //int inserted_lines = bee->y - bee->ins_y;
-  //if(inserted_lines > 0){
+  /*
+  int inserted_lines = bee->y - bee->ins_y;
+  if(inserted_lines > 0){
+    bee->buf = realloc(bee->buf,
+        (bee->buf_len + inserted_lines) * sizeof(struct string));
+    memmove(
+	bee->buf + (bee->ins_y + inserted_lines) *sizeof(struct string), 
+	bee->buf + (bee->ins_y +1) *sizeof(struct string),
+	inserted_lines *sizeof(struct string)
+	);
+    // TODO
+    // copy inserted lines
+    // split insertion line
+    // prepend first part of insertion line at the beginning of insertion buffer
+    // append last part of insertion line at the end of insertion buffer
+    //bee->buf[bee->ins_y];
+  }
+  else{
+  */
+    struct string *cur_line = &bee->buf[bee->y];
+    int len = cur_line->len + bee->ins_buf.len;
+    cur_line->chars = realloc(cur_line->chars, len+1);
+    cur_line->chars[len] = '\0';
+    memmove(
+	//cur_line->chars + bee->ins_bx + bee->ins_buf.len, 
+	cur_line->chars + bee->bx, 
+	cur_line->chars + bee->ins_bx,
+	cur_line->len - bee->ins_bx);
+    memcpy(
+	cur_line->chars + bee->ins_bx, 
+	bee->ins_buf.chars,
+	bee->ins_buf.len);
+    cur_line->len = cur_line->cap = len;
+  /*
+  }
+  */
 
-  //  bee->buf = realloc(bee->buf,
-  //      (bee->buf_len + inserted_lines) * sizeof(struct string));
-  //  //memmove();
-  //      
-
-  //}
-
-  //bee->buf[bee->ins_y];
   bee->mode = NORMAL;
   string_destroy(&bee->ins_buf);
 }
@@ -419,13 +445,17 @@ static inline char insert_read_key(struct bee *bee){
   tb_poll_event(&ev);
   if(ev.type == TB_EVENT_RESIZE) resize(bee);
   else if(ev.key!=0) switch(ev.key){
-  case TB_KEY_ESC:
-    i_esc(bee); break;
+    case TB_KEY_ESC:
+      i_esc(bee); break;
   }
   else if(ev.ch){
-    char s[7];
+    //char s[7];
+    char *s = calloc(8,1);
     tb_utf8_unicode_to_char(s, ev.ch);
     string_append(&bee->ins_buf, s);
+    bee->bx += strlen(s);
+    bee->vx += columnlen(s, bee->vx);
+    free(s);
   }
   return 1;
 }
