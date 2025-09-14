@@ -54,12 +54,8 @@ void string_destroy(struct string *s){
 }
 
 void string_append(struct string *s, const char *t){
-  if(s->len + (int)strlen(t) > s->cap){
-    char *aux = s->chars;
-    s->chars = malloc(s->cap*2);
-    strcpy(s->chars, aux);
-    s->cap *= 2;
-  }
+  if(s->len + (int)strlen(t) > s->cap)
+    s->chars = realloc(s->chars, s->cap*=2);
   strcat(s->chars + s->len, t);
   s->len += strlen(t);
 }
@@ -403,6 +399,17 @@ static inline char normal_read_key(struct bee *bee){
 
 
 static inline void i_esc(struct bee *bee){
+  //int inserted_lines = bee->y - bee->ins_y;
+  //if(inserted_lines > 0){
+
+  //  bee->buf = realloc(bee->buf,
+  //      (bee->buf_len + inserted_lines) * sizeof(struct string));
+  //  //memmove();
+  //      
+
+  //}
+
+  //bee->buf[bee->ins_y];
   bee->mode = NORMAL;
   string_destroy(&bee->ins_buf);
 }
