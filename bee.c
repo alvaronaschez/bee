@@ -449,13 +449,13 @@ static inline char insert_read_key(struct bee *bee){
       i_esc(bee); break;
   }
   else if(ev.ch){
-    //char s[7];
-    char *s = calloc(8,1);
+    char s[7];
+    //char *s = calloc(8,1);
     tb_utf8_unicode_to_char(s, ev.ch);
     string_append(&bee->ins_buf, s);
     bee->bx += strlen(s);
     bee->vx += columnlen(s, bee->vx);
-    free(s);
+    //free(s);
   }
   return 1;
 }
