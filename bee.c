@@ -206,8 +206,18 @@ static inline void print_footer(const struct bee *bee){
 }
 
 static inline void print_insert_buffer(const struct bee *bee, int *x, int *y){
-  println(*x, *y, bee->ins_buf.chars, screen_width);
-  *x = *x+bee->ins_buf.len;
+  char *c = bee->ins_buf.chars;
+  while(*c){
+    if(*c == '\n'){
+      (*y)++;
+      *x = 0;
+      // TODO: skip chars at right of bee->leftcol 
+    } else {
+      print_tb(*x, *y, c);
+      (*x) += columnlen(c, *x);
+    }
+    c += bytelen(c);
+  }
 }
 
 static inline void print_screen(const struct bee *bee){
@@ -216,24 +226,31 @@ static inline void print_screen(const struct bee *bee){
   char *s;
   if(bee->mode == INSERT){
     // before insert buffer
-    for(int j=0; j<bee->buf_len && j<bee->ins_y; j++){
+    for(int j=0; bee->toprow+j<bee->buf_len && bee->toprow+j<bee->ins_y; j++){
       s = skip_n_col(bee->buf[bee->toprow+j].chars, bee->leftcol, &remainder);
       println(remainder, j, s, screen_width);
     }
 
     // insert buffer
     s = skip_n_col(bee->buf[bee->ins_y].chars, bee->leftcol, &remainder);
-    println(remainder, bee->ins_y, bee->buf[bee->ins_y].chars, bee->ins_vx);
+    println(remainder, bee->ins_y-bee->toprow, bee->buf[bee->ins_y].chars, bee->ins_vx);
     int xx = bee->ins_vx - bee->leftcol; // relative to the screen
     int yy = bee->ins_y - bee->toprow; // relative to the screen
     print_insert_buffer(bee, &xx, &yy);
-    println(xx, yy, bee->buf[bee->toprow+yy].chars + bee->ins_bx, screen_width);
+    int num_lines_inserted = yy - bee->ins_y;
+    println(xx, yy, bee->buf[bee->ins_y].chars + bee->ins_bx, screen_width);
     tb_set_cursor(xx, yy);
 
     // after insert buffer
-    for(int j = yy+1; j<screen_height && j < bee->buf_len; j++){
-      s = skip_n_col(bee->buf[bee->toprow+j].chars, bee->leftcol, &remainder);
-      println(remainder, j, s, screen_width);
+    //for(int j = yy+1; j<screen_height && bee->toprow+j < bee->buf_len; j++){
+    //  s = skip_n_col(
+    //      bee->buf[bee->toprow+j-num_lines_inserted].chars, bee->leftcol, &remainder);
+    //  println(remainder, j, s, screen_width);
+    //}
+    for(int j=0; j+yy+1<screen_height && bee->toprow+j < bee->buf_len; j++){
+      s = skip_n_col(
+	  bee->buf[bee->ins_y+j+1].chars, bee->leftcol, &remainder);
+      println(remainder, yy+1+j, s, screen_width);
     }
   }
   else { // mode != INSERT
@@ -447,15 +464,18 @@ static inline char insert_read_key(struct bee *bee){
   else if(ev.key!=0) switch(ev.key){
     case TB_KEY_ESC:
       i_esc(bee); break;
+    case TB_KEY_ENTER:
+      bee->y++;
+      bee->bx = bee->vx = 0;
+      string_append(&bee->ins_buf, "\n");
+      break;
   }
   else if(ev.ch){
     char s[7];
-    //char *s = calloc(8,1);
     tb_utf8_unicode_to_char(s, ev.ch);
     string_append(&bee->ins_buf, s);
     bee->bx += strlen(s);
     bee->vx += columnlen(s, bee->vx);
-    //free(s);
   }
   return 1;
 }
