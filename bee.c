@@ -428,6 +428,7 @@ static inline void i_esc(struct bee *bee){
     inserted_lines[i].cap = inserted_lines[i].len = end-s;
     s = end+1;
   }
+
   inserted_lines[num_lines_ins_buf-1].chars = realloc(
       inserted_lines[num_lines_ins_buf-1].chars,
       inserted_lines[num_lines_ins_buf-1].len 
@@ -442,8 +443,8 @@ static inline void i_esc(struct bee *bee){
   bee->buf[bee->ins_y].chars = realloc(bee->buf[bee->ins_y].chars,
       bee->ins_bx + inserted_lines[0].len +1);
   strcat(bee->buf[bee->ins_y].chars, inserted_lines[0].chars);
-  bee->buf[bee->ins_y].len = bee->ins_bx + inserted_lines[0].len +1;
-  bee->buf[bee->ins_y].cap = bee->buf[bee->ins_y].len;
+  bee->buf[bee->ins_y].len = bee->ins_bx + inserted_lines[0].len;
+  bee->buf[bee->ins_y].cap += inserted_lines[0].len;
   free(inserted_lines[0].chars);
 
   // make room
@@ -451,13 +452,12 @@ static inline void i_esc(struct bee *bee){
   memmove(
       &bee->buf[bee->y+1],
       &bee->buf[bee->ins_y+1],
-      (bee->buf_len - bee->ins_y) * sizeof(struct string));
+      (bee->buf_len - bee->ins_y -1) * sizeof(struct string));
+      // TODO: why not: (bee->buf_len - bee->ins_y -1) * sizeof(struct string));
 
   for(int i=1; i<num_lines_ins_buf; i++){
     bee->buf[bee->ins_y+i] = inserted_lines[i];
   }
-
-  free(inserted_lines);
   string_destroy(&bee->ins_buf);
 
   bee->mode = NORMAL;
