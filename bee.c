@@ -444,14 +444,13 @@ static inline void i_esc(struct bee *bee){
   strcat(bee->buf[bee->ins_y].chars, inserted_lines[0].chars);
   bee->buf[bee->ins_y].len = bee->ins_bx + inserted_lines[0].len +1;
   bee->buf[bee->ins_y].cap = bee->buf[bee->ins_y].len;
-
   free(inserted_lines[0].chars);
 
   // make room
   bee->buf = realloc(bee->buf, sizeof(struct string)*(bee->buf_len+num_lines_ins_buf-1));
   memmove(
-      bee->buf + (bee->y+1) * sizeof(struct string),
-      bee->buf + (bee->ins_y+1) * sizeof(struct string),
+      &bee->buf[bee->y+1],
+      &bee->buf[bee->ins_y+1],
       (bee->buf_len - bee->ins_y) * sizeof(struct string));
 
   for(int i=1; i<num_lines_ins_buf; i++){
@@ -459,10 +458,9 @@ static inline void i_esc(struct bee *bee){
   }
 
   free(inserted_lines);
-  // free memory
-  
-  bee->mode = NORMAL;
   string_destroy(&bee->ins_buf);
+
+  bee->mode = NORMAL;
 }
 
 static inline char insert_read_key(struct bee *bee){
