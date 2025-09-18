@@ -237,7 +237,7 @@ static inline void print_screen(const struct bee *bee){
     int xx = bee->ins_vx - bee->leftcol; // relative to the screen
     int yy = bee->ins_y - bee->toprow; // relative to the screen
     print_insert_buffer(bee, &xx, &yy);
-    int num_lines_inserted = yy - bee->ins_y;
+    int num_lines_inserted = bee->y - bee->ins_y;
     println(xx, yy, bee->buf[bee->ins_y].chars + bee->ins_bx, screen_width);
     tb_set_cursor(xx, yy);
 
@@ -416,25 +416,55 @@ static inline char normal_read_key(struct bee *bee){
 
 
 static inline void i_esc(struct bee *bee){
-  /*
-  int inserted_lines = bee->y - bee->ins_y;
-  if(inserted_lines > 0){
-    bee->buf = realloc(bee->buf,
-        (bee->buf_len + inserted_lines) * sizeof(struct string));
-    memmove(
-	bee->buf + (bee->ins_y + inserted_lines) *sizeof(struct string), 
-	bee->buf + (bee->ins_y +1) *sizeof(struct string),
-	inserted_lines *sizeof(struct string)
-	);
-    // TODO
-    // copy inserted lines
-    // split insertion line
-    // prepend first part of insertion line at the beginning of insertion buffer
-    // append last part of insertion line at the end of insertion buffer
-    //bee->buf[bee->ins_y];
+  int num_lines_ins_buf= bee->y - bee->ins_y + 1;
+  struct string *inserted_lines = malloc(num_lines_ins_buf*sizeof(struct string));
+  char *s = bee->ins_buf.chars;
+
+  for(int i=0; i<num_lines_ins_buf; i++){
+    char *end = strchrnul(s, '\n');
+    inserted_lines[i].chars = malloc(end-s+1);
+    memcpy(inserted_lines[i].chars, s, end-s);
+    inserted_lines[i].chars[end-s] = '\0'; // null terminated string
+    inserted_lines[i].cap = inserted_lines[i].len = end-s;
+    s = end+1;
   }
-  else{
-  */
+  // TODO
+  inserted_lines[num_lines_ins_buf-1].chars = realloc(
+      inserted_lines[num_lines_ins_buf-1].chars,
+      inserted_lines[num_lines_ins_buf-1].len 
+      + bee->buf[bee->ins_y].len - bee->ins_bx
+      + 1); 
+  strcat(inserted_lines[num_lines_ins_buf-1].chars,
+     bee->buf[bee->ins_y].chars + bee->ins_bx);
+  inserted_lines[num_lines_ins_buf-1].len += bee->buf[bee->ins_y].len - bee->ins_bx;
+  inserted_lines[num_lines_ins_buf-1].cap = inserted_lines[num_lines_ins_buf-1].len;
+
+  bee->buf[bee->ins_y].chars[bee->ins_bx] = '\0';
+  bee->buf[bee->ins_y].chars = realloc(bee->buf[bee->ins_y].chars,
+      bee->ins_bx + inserted_lines[0].len +1);
+  strcat(bee->buf[bee->ins_y].chars, inserted_lines[0].chars);
+  bee->buf[bee->ins_y].len = bee->ins_bx + inserted_lines[0].len +1;
+  bee->buf[bee->ins_y].cap = bee->buf[bee->ins_y].len;
+
+  free(inserted_lines[0].chars);
+
+  // make room
+  bee->buf = realloc(bee->buf, sizeof(struct string)*(bee->buf_len+num_lines_ins_buf-1));
+  memmove(
+      bee->buf + (bee->y+1) * sizeof(struct string),
+      bee->buf + (bee->ins_y+1) * sizeof(struct string),
+      (bee->buf_len - bee->ins_y) * sizeof(struct string));
+
+  for(int i=1; i<num_lines_ins_buf; i++){
+    bee->buf[bee->ins_y+i] = inserted_lines[i];
+  }
+
+  free(inserted_lines);
+  // free memory
+  
+
+
+  /*
     struct string *cur_line = &bee->buf[bee->y];
     int len = cur_line->len + bee->ins_buf.len;
     cur_line->chars = realloc(cur_line->chars, len+1);
@@ -449,8 +479,6 @@ static inline void i_esc(struct bee *bee){
 	bee->ins_buf.chars,
 	bee->ins_buf.len);
     cur_line->len = cur_line->cap = len;
-  /*
-  }
   */
 
   bee->mode = NORMAL;
