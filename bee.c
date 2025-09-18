@@ -428,7 +428,6 @@ static inline void i_esc(struct bee *bee){
     inserted_lines[i].cap = inserted_lines[i].len = end-s;
     s = end+1;
   }
-  // TODO
   inserted_lines[num_lines_ins_buf-1].chars = realloc(
       inserted_lines[num_lines_ins_buf-1].chars,
       inserted_lines[num_lines_ins_buf-1].len 
@@ -462,25 +461,6 @@ static inline void i_esc(struct bee *bee){
   free(inserted_lines);
   // free memory
   
-
-
-  /*
-    struct string *cur_line = &bee->buf[bee->y];
-    int len = cur_line->len + bee->ins_buf.len;
-    cur_line->chars = realloc(cur_line->chars, len+1);
-    cur_line->chars[len] = '\0';
-    memmove(
-	//cur_line->chars + bee->ins_bx + bee->ins_buf.len, 
-	cur_line->chars + bee->bx, 
-	cur_line->chars + bee->ins_bx,
-	cur_line->len - bee->ins_bx);
-    memcpy(
-	cur_line->chars + bee->ins_bx, 
-	bee->ins_buf.chars,
-	bee->ins_buf.len);
-    cur_line->len = cur_line->cap = len;
-  */
-
   bee->mode = NORMAL;
   string_destroy(&bee->ins_buf);
 }
