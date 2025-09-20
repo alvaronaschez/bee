@@ -176,8 +176,6 @@ static inline char *skip_n_col(char *s, int n, int *remainder){
   *remainder = 0;
   if(s==NULL || s[0]=='\0') return NULL;
   while(n > 0){
-    // TODO: fix columnlen call
-    // Second argument should be the current columnt in absolute terms
     *remainder = n - columnlen(s, 0);
     n -= columnlen(s, 0);
     s += bytelen(s);
@@ -339,6 +337,16 @@ static inline void n_l(struct bee *bee){
   bee->vxgoal = bee->vx;
 }
 
+static inline void n_l_pastend(struct bee *bee){
+  // you can go past the end of the line so you can append at the end of the line
+  if(bee->bx + bytelen(current_char_ptr(bee)) <= current_line_ptr(bee)->len){
+    bee->vx += columnlen(current_char_ptr(bee), bee->vx);
+    bee->bx += bytelen(current_char_ptr(bee));
+    autoscroll_x(bee);
+  }
+  bee->vxgoal = bee->vx;
+}
+
 static inline void n_j(struct bee *bee){
   if(bee->y +1 == bee->buf_len) return;
   bee->y++;
@@ -398,6 +406,11 @@ static inline void n_i(struct bee *bee){
   bee->mode = INSERT;
 }
 
+static inline void n_a(struct bee *bee){
+  n_l_pastend(bee);
+  n_i(bee);
+}
+
 static inline void resize(const struct bee *bee){
 }
 
@@ -412,6 +425,8 @@ static inline char normal_read_key(struct bee *bee){
     //return ev.ch == 'Q' ? 0 : 1;
   case 'i':
     n_i(bee); break;
+  case 'a':
+    n_a(bee); break;
   case 'h':
     n_h(bee); break;
   case 'j':
@@ -470,7 +485,7 @@ static inline void i_esc(struct bee *bee){
       &bee->buf[bee->y+1],
       &bee->buf[bee->ins_y+1],
       (bee->buf_len - bee->ins_y -1) * sizeof(struct string));
-      // TODO: why not: (bee->buf_len - bee->ins_y -1) * sizeof(struct string));
+      // doubt - why not: (bee->buf_len - bee->ins_y) * sizeof(struct string));
 
   for(int i=1; i<num_lines_ins_buf; i++){
     bee->buf[bee->ins_y+i] = inserted_lines[i];
