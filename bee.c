@@ -201,8 +201,12 @@ static inline void print_footer(const struct bee *bee){
   uintattr_t fg = TB_MAGENTA;
   for(int x=0; x<tb_width(); x++)
     tb_print(x, tb_height()-1, fg, bg, " ");
+
+  char *mode = mode_label[bee->mode];
+  int buf_len = bee->mode == INSERT ?
+    bee->buf_len + bee->y - bee->ins_y : bee->buf_len;
   tb_printf(0, tb_height() - 1, fg, bg, footer_format,
-            mode_label[bee->mode], bee->filename, bee->buf_len, bee->y, bee->vx);
+            mode, bee->filename, buf_len, bee->y, bee->vx);
 }
 
 static inline void print_insert_buffer(const struct bee *bee, int *x, int *y){
@@ -354,6 +358,18 @@ static inline void n_k(struct bee *bee){
   autoscroll(bee);
 }
 static inline void n_x(struct bee *bee){
+  struct string *line = &bee->buf[bee->y];
+
+  int nbytes = bytelen(&line->chars[bee->bx]); 
+  line->len -= nbytes;
+  line->chars[bee->bx] = '\0';
+  strcat(line->chars, &line->chars[bee->bx+nbytes]);
+  if(bee->bx == line->len){
+    bee->bx -= nbytes;
+    bee->vx -= 1;
+  }
+}
+static inline void n_x_old(struct bee *bee){
   int len = bee->buf[bee->y].len;
   if(len==0) return;
   char *s = bee->buf[bee->y].chars;
@@ -416,7 +432,8 @@ static inline char normal_read_key(struct bee *bee){
 
 
 static inline void i_esc(struct bee *bee){
-  int num_lines_ins_buf= bee->y - bee->ins_y + 1;
+  int num_lines_inserted = bee->y -bee->ins_y;
+  int num_lines_ins_buf= num_lines_inserted +1;
   struct string *inserted_lines = malloc(num_lines_ins_buf*sizeof(struct string));
   char *s = bee->ins_buf.chars;
 
@@ -448,7 +465,7 @@ static inline void i_esc(struct bee *bee){
   free(inserted_lines[0].chars);
 
   // make room
-  bee->buf = realloc(bee->buf, sizeof(struct string)*(bee->buf_len+num_lines_ins_buf-1));
+  bee->buf = realloc(bee->buf, sizeof(struct string)*(bee->buf_len+num_lines_inserted));
   memmove(
       &bee->buf[bee->y+1],
       &bee->buf[bee->ins_y+1],
@@ -460,6 +477,7 @@ static inline void i_esc(struct bee *bee){
   }
   string_destroy(&bee->ins_buf);
 
+  bee->buf_len += num_lines_inserted;
   bee->mode = NORMAL;
 }
 
