@@ -496,16 +496,6 @@ struct string *insbuf_to_str_arr(const struct bee *bee){
     s = end+1;
   }
 
-  inserted_lines[num_lines_ins_buf-1].chars = realloc(
-      inserted_lines[num_lines_ins_buf-1].chars,
-      inserted_lines[num_lines_ins_buf-1].len 
-      + bee->buf[bee->ins_y].len - bee->ins_bx
-      + 1); 
-  strcat(inserted_lines[num_lines_ins_buf-1].chars,
-     bee->buf[bee->ins_y].chars + bee->ins_bx);
-  inserted_lines[num_lines_ins_buf-1].len += bee->buf[bee->ins_y].len - bee->ins_bx;
-  inserted_lines[num_lines_ins_buf-1].cap = inserted_lines[num_lines_ins_buf-1].len;
-
   return inserted_lines;
 }
 
@@ -516,6 +506,19 @@ static inline void i_esc(struct bee *bee){
   struct string *inserted_lines = insbuf_to_str_arr(bee);
 
   // insert struct string* into struct bee
+  
+  // append end of insertion line to end of inserted_lines
+  inserted_lines[num_lines_ins_buf-1].chars = realloc(
+      inserted_lines[num_lines_ins_buf-1].chars,
+      inserted_lines[num_lines_ins_buf-1].len 
+      + bee->buf[bee->ins_y].len - bee->ins_bx
+      + 1); 
+  strcat(inserted_lines[num_lines_ins_buf-1].chars,
+     bee->buf[bee->ins_y].chars + bee->ins_bx);
+  inserted_lines[num_lines_ins_buf-1].len += bee->buf[bee->ins_y].len - bee->ins_bx;
+  inserted_lines[num_lines_ins_buf-1].cap = inserted_lines[num_lines_ins_buf-1].len;
+
+  // insert first line
   bee->buf[bee->ins_y].chars[bee->ins_bx] = '\0';
   bee->buf[bee->ins_y].chars = realloc(bee->buf[bee->ins_y].chars,
       bee->ins_bx + inserted_lines[0].len +1);
@@ -525,12 +528,15 @@ static inline void i_esc(struct bee *bee){
   free(inserted_lines[0].chars);
 
   // make room
-  bee->buf = realloc(bee->buf, sizeof(struct string)*(bee->buf_len+num_lines_inserted));
-  memmove(
-      &bee->buf[bee->y+1],
-      &bee->buf[bee->ins_y+1],
-      (bee->buf_len - bee->ins_y -1) * sizeof(struct string));
-      // doubt - why not: (bee->buf_len - bee->ins_y) * sizeof(struct string));
+  if(num_lines_inserted)
+  {
+    bee->buf = realloc(bee->buf, sizeof(struct string)*(bee->buf_len+num_lines_inserted));
+    memmove(
+	&bee->buf[bee->y+1],
+	&bee->buf[bee->ins_y+1],
+	(bee->buf_len - bee->ins_y -1) * sizeof(struct string));
+	// doubt - why not: (bee->buf_len - bee->ins_y) * sizeof(struct string));
+  }
 
   for(int i=1; i<num_lines_ins_buf; i++){
     bee->buf[bee->ins_y+i] = inserted_lines[i];
