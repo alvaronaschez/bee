@@ -27,6 +27,24 @@ struct string {
   int len, cap; // length and capacity
 };
 
+struct delete_command{
+  int x, y, xx, yy;
+};
+struct insert_command{
+  int x, y, len;
+  struct string *txt;
+};
+enum operation { INS, DEL};
+struct change_stack{
+  enum operation op;
+  int y, bx, vx, leftcol, toprow;
+  struct change_stack *next;
+  union {
+    struct insert_command i;
+    struct delete_command d;
+  } cmd;
+};
+
 struct bee {
   enum mode mode;
   struct string *buf;
@@ -59,6 +77,25 @@ void string_append(struct string *s, const char *t){
   strcat(s->chars + s->len, t);
   s->len += strlen(t);
 }
+
+void change_stack_destroy(struct change_stack *cs){
+  struct change_stack *aux;
+  while(cs){
+    aux = cs->next;
+    if(cs->op == INS){
+      for(int i=0; i<cs->cmd.i.len; i++)
+	string_destroy(cs->cmd.i.txt);
+      free(cs->cmd.i.txt);
+    }
+    free(cs);
+    cs = aux;
+  }
+}
+void apply_cmd_ins(struct bee *bee, struct insert_command c){
+
+}
+void apply_cmd_del(struct bee *bee, struct delete_command c){}
+
 
 static inline struct string *current_line_ptr(struct bee* bee){
   return &bee->buf[bee->y];
@@ -285,7 +322,7 @@ static inline void print_screen(const struct bee *bee){
 
 //static inline void bx_to_vx(const char *str, int vxgoal, int *bx, int *vx){}
 
-static inline void autoscroll_x(struct bee* bee){
+static inline void autoscroll_x(struct bee *bee){
   // cursor too far to the right
   if(bee->vx + columnlen(current_char_ptr(bee), bee->vx) > screen_width + bee->leftcol){
     int bx_leftcol, vx_leftcol;
@@ -300,7 +337,7 @@ static inline void autoscroll_x(struct bee* bee){
     bee->leftcol = bee->vx;
 }
 
-static inline void autoscroll_y(struct bee* bee){
+static inline void autoscroll_y(struct bee *bee){
   // cursor too far up
   if(bee->toprow > bee->y)
     bee->toprow = bee->y;
@@ -445,10 +482,8 @@ static inline char normal_read_key(struct bee *bee){
   return 1;
 }
 
-
-static inline void i_esc(struct bee *bee){
-  int num_lines_inserted = bee->y -bee->ins_y;
-  int num_lines_ins_buf= num_lines_inserted +1;
+struct string *insbuf_to_str_arr(const struct bee *bee){
+  int num_lines_ins_buf = bee->y -bee->ins_y +1;
   struct string *inserted_lines = malloc(num_lines_ins_buf*sizeof(struct string));
   char *s = bee->ins_buf.chars;
 
@@ -471,6 +506,16 @@ static inline void i_esc(struct bee *bee){
   inserted_lines[num_lines_ins_buf-1].len += bee->buf[bee->ins_y].len - bee->ins_bx;
   inserted_lines[num_lines_ins_buf-1].cap = inserted_lines[num_lines_ins_buf-1].len;
 
+  return inserted_lines;
+}
+
+static inline void i_esc(struct bee *bee){
+  int num_lines_inserted = bee->y -bee->ins_y;
+  int num_lines_ins_buf= num_lines_inserted +1;
+
+  struct string *inserted_lines = insbuf_to_str_arr(bee);
+
+  // insert struct string* into struct bee
   bee->buf[bee->ins_y].chars[bee->ins_bx] = '\0';
   bee->buf[bee->ins_y].chars = realloc(bee->buf[bee->ins_y].chars,
       bee->ins_bx + inserted_lines[0].len +1);
