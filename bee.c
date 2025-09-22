@@ -91,10 +91,17 @@ void change_stack_destroy(struct change_stack *cs){
     cs = aux;
   }
 }
-void apply_cmd_ins(struct bee *bee, struct insert_command c){
 
+static inline void bee_insert(struct bee *bee, int x, int y, struct string *s, int nlines);
+
+void apply_cmd_ins(struct bee *bee, struct insert_command c){
+  bee_insert(bee, c.x, c.y, c.txt, c.len);
+  // TODO: save in redo/undo stack?
 }
-void apply_cmd_del(struct bee *bee, struct delete_command c){}
+void apply_cmd_del(struct bee *bee, struct delete_command c){
+
+  // TODO
+}
 
 
 static inline struct string *current_line_ptr(struct bee* bee){
