@@ -80,9 +80,11 @@ void string_append(struct string *s, const char *t){
   s->len += strlen(t);
 }
 
-/*
- * splits a string with linesbreak into an array of strings w/o linebreaks
- * canibalizes the input string
+/**
+ * @brief Splits a string with linesbreak into an array of strings w/o linebreaks
+ *
+ * @warning Takes ownership of `str`.
+ * The caller must not use or free `str` after this call.
  */
 struct string * string_split_lines(struct string *str, int nlines){
   char *s = str->chars;
@@ -163,10 +165,11 @@ static inline int utf8prev(const char* s, int off){
   return off;
 }
 
+/**
+ * @warning Takes ownership of `s`.
+ * The caller must not use or free `s` after this call.
+ */
 static inline void bee_insert(struct bee *bee, int x, int y, struct string *s, int nlines){
-  /**
-  * canibalizes s
-  */
   // append end of insertion line to end of s
   s[nlines-1].chars = realloc(
       s[nlines-1].chars,
