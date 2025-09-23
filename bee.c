@@ -124,7 +124,6 @@ void apply_cmd_ins(struct bee *bee, struct insert_command c){
   // TODO: save in redo/undo stack?
 }
 void apply_cmd_del(struct bee *bee, struct delete_command c){
-
   // TODO
 }
 
@@ -505,18 +504,7 @@ static inline void n_k(struct bee *bee){
 
   autoscroll(bee);
 }
-static inline void n_x_old(struct bee *bee){
-  struct string *line = &bee->buf[bee->y];
 
-  int nbytes = bytelen(&line->chars[bee->bx]); 
-  line->len -= nbytes;
-  line->chars[bee->bx] = '\0';
-  strcat(line->chars, &line->chars[bee->bx+nbytes]);
-  if(bee->bx == line->len){
-    bee->bx -= nbytes;
-    bee->vx -= 1;
-  }
-}
 static inline void n_x(struct bee *bee){
   bee_delete(bee, bee->bx, bee->y, bee->bx, bee->y);
   if(bee->bx != 0 && bee->bx == bee->buf[bee->y].len)
