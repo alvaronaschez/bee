@@ -564,6 +564,7 @@ static inline void i_esc(struct bee *bee){
 
   struct string *inserted_lines = string_split_lines(&bee->ins_buf, num_lines_ins_buf);
   bee_insert(bee, bee->ins_bx, bee->ins_y, inserted_lines, num_lines_ins_buf);
+  bee->vxgoal = bee->vx;
 
   bee->mode = NORMAL;
 }
