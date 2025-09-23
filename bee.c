@@ -58,6 +58,8 @@ struct bee {
 
   struct string ins_buf;
   int ins_y, ins_bx, ins_vx;
+
+  struct change_stack *undo_stack, *redo_stack;
 };
 
 void string_init(struct string *s){
@@ -208,7 +210,7 @@ static inline void _bee_insert(struct bee *bee, int x, int y, struct string *s, 
 }
 static inline void bee_insert(struct bee *bee, int x, int y, struct string *s, int nlines){
   _bee_insert(bee, x, y, s, nlines);
-  // TODO: update redo stack
+  // TODO: update undo stack
 }
 
 static inline void _bee_delete(struct bee *bee, int x, int y, int xx, int yy){
@@ -233,12 +235,12 @@ static inline void _bee_delete(struct bee *bee, int x, int y, int xx, int yy){
       string_destroy(&bee->buf[y+i]);
     memmove(&bee->buf[y+1], &bee->buf[y+lines_to_delete],
 	sizeof(struct string*)*(bee->buf_len-1-yy));
-  bee->buf_len -= lines_to_delete;
+    bee->buf_len -= lines_to_delete;
   }
 }
 static inline void bee_delete(struct bee *bee, int x, int y, int xx, int yy){
   _bee_delete(bee, x, y, xx, yy);
-  // TODO: update redo stack
+  // TODO: update undo stack
 }
 
 void change_stack_destroy(struct change_stack *cs){
@@ -636,10 +638,18 @@ static inline void bee_init(struct bee *bee){
   bee->leftcol = bee->toprow = 0;
   bee->bx = bee->vx = bee->vxgoal = 0;
   bee->ins_buf.chars = NULL;
+  bee->undo_stack = bee->redo_stack = NULL;
 }
 
 static inline void bee_destroy(struct bee *bee){
   // TODO
+  for(int i=0; i<bee->buf_len; i++)
+    string_destroy(&bee->buf[i]);
+  free(bee->buf);
+  if(bee->filename)
+    free(bee->filename);
+  change_stack_destroy(bee->undo_stack);
+  change_stack_destroy(bee->redo_stack);
 }
 
 int main(int argc, char **argv){
