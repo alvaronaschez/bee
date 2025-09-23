@@ -102,31 +102,6 @@ struct string * string_split_lines(struct string *str, int nlines){
   return inserted_lines;
 }
 
-void change_stack_destroy(struct change_stack *cs){
-  struct change_stack *aux;
-  while(cs){
-    aux = cs->next;
-    if(cs->op == INS){
-      for(int i=0; i<cs->cmd.i.len; i++)
-	string_destroy(cs->cmd.i.txt);
-      free(cs->cmd.i.txt);
-    }
-    free(cs);
-    cs = aux;
-  }
-}
-
-// forward declaration
-static inline void bee_insert(struct bee *bee, int x, int y, struct string *s, int nlines);
-
-void apply_cmd_ins(struct bee *bee, struct insert_command c){
-  bee_insert(bee, c.x, c.y, c.txt, c.len);
-  // TODO: save in redo/undo stack?
-}
-void apply_cmd_del(struct bee *bee, struct delete_command c){
-  // TODO
-}
-
 
 static inline struct string *current_line_ptr(struct bee* bee){
   return &bee->buf[bee->y];
@@ -253,6 +228,27 @@ static inline void bee_delete(struct bee *bee, int x, int y, int xx, int yy){
 	sizeof(struct string*)*(bee->buf_len-1-yy));
   bee->buf_len -= lines_to_delete;
   }
+}
+
+void change_stack_destroy(struct change_stack *cs){
+  struct change_stack *aux;
+  while(cs){
+    aux = cs->next;
+    if(cs->op == INS){
+      for(int i=0; i<cs->cmd.i.len; i++)
+	string_destroy(cs->cmd.i.txt);
+      free(cs->cmd.i.txt);
+    }
+    free(cs);
+    cs = aux;
+  }
+}
+// TODO: review if these are needed
+void apply_cmd_ins(struct bee *bee, struct insert_command c){
+  bee_insert(bee, c.x, c.y, c.txt, c.len);
+}
+void apply_cmd_del(struct bee *bee, struct delete_command c){
+  bee_delete(bee, c.x, c.y, c.xx, c.yy);
 }
 
 static inline struct string *load_file(const char *filename, int *len){
