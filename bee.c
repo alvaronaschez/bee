@@ -169,7 +169,7 @@ static inline int utf8prev(const char* s, int off){
  * @warning Takes ownership of `s`.
  * The caller must not use or free `s` after this call.
  */
-static inline void bee_insert(struct bee *bee, int x, int y, struct string *s, int nlines){
+static inline void _bee_insert(struct bee *bee, int x, int y, struct string *s, int nlines){
   // append end of insertion line to end of s
   s[nlines-1].chars = realloc(
       s[nlines-1].chars,
@@ -206,8 +206,12 @@ static inline void bee_insert(struct bee *bee, int x, int y, struct string *s, i
 
   bee->buf_len += nlines-1;
 }
+static inline void bee_insert(struct bee *bee, int x, int y, struct string *s, int nlines){
+  _bee_insert(bee, x, y, s, nlines);
+  // TODO: update redo stack
+}
 
-static inline void bee_delete(struct bee *bee, int x, int y, int xx, int yy){
+static inline void _bee_delete(struct bee *bee, int x, int y, int xx, int yy){
   if(xx == bee->buf[yy].len){
     /*
     * we want to delete the last linebreak, so we join the whole next line to 
@@ -231,6 +235,10 @@ static inline void bee_delete(struct bee *bee, int x, int y, int xx, int yy){
 	sizeof(struct string*)*(bee->buf_len-1-yy));
   bee->buf_len -= lines_to_delete;
   }
+}
+static inline void bee_delete(struct bee *bee, int x, int y, int xx, int yy){
+  _bee_delete(bee, x, y, xx, yy);
+  // TODO: update redo stack
 }
 
 void change_stack_destroy(struct change_stack *cs){
