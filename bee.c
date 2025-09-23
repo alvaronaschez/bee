@@ -15,6 +15,8 @@
 #define footerheight 1
 #define screen_height (tb_height() - footerheight)
 #define screen_width (tb_width())
+#define MAX(a,b) ((a)>(b)?(a):(b))
+#define MIN(a,b) ((a)<(b)?(a):(b))
 
 enum mode {
   NORMAL, INSERT, COMMAND
@@ -78,6 +80,28 @@ void string_append(struct string *s, const char *t){
   s->len += strlen(t);
 }
 
+/*
+ * splits a string with linesbreak into an array of strings w/o linebreaks
+ * canibalizes the input string
+ */
+struct string * string_split_lines(struct string *str, int nlines){
+  char *s = str->chars;
+  struct string *inserted_lines = malloc(nlines*sizeof(struct string));
+
+  for(int i=0; i<nlines; i++){
+    char *end = strchrnul(s, '\n');
+    inserted_lines[i].chars = malloc(end-s+1);
+    memcpy(inserted_lines[i].chars, s, end-s);
+    inserted_lines[i].chars[end-s] = '\0'; // null terminated string
+    inserted_lines[i].cap = inserted_lines[i].len = end-s;
+    s = end+1;
+  }
+
+  string_destroy(str);
+
+  return inserted_lines;
+}
+
 void change_stack_destroy(struct change_stack *cs){
   struct change_stack *aux;
   while(cs){
@@ -92,6 +116,7 @@ void change_stack_destroy(struct change_stack *cs){
   }
 }
 
+// forward declaration
 static inline void bee_insert(struct bee *bee, int x, int y, struct string *s, int nlines);
 
 void apply_cmd_ins(struct bee *bee, struct insert_command c){
@@ -164,6 +189,73 @@ static inline int utf8prev(const char* s, int off){
   return off;
 }
 
+static inline void bee_insert(struct bee *bee, int x, int y, struct string *s, int nlines){
+  /**
+  * canibalizes s
+  */
+  // append end of insertion line to end of s
+  s[nlines-1].chars = realloc(
+      s[nlines-1].chars,
+      s[nlines-1].len 
+      + bee->buf[y].len - x
+      + 1); 
+  strcat(s[nlines-1].chars,
+     bee->buf[y].chars + x);
+  s[nlines-1].len += bee->buf[y].len - x;
+  s[nlines-1].cap = s[nlines-1].len;
+
+  // insert first line
+  bee->buf[y].chars[x] = '\0';
+  bee->buf[y].chars = realloc(bee->buf[y].chars,
+      x + s[0].len +1);
+  strcat(bee->buf[y].chars, s[0].chars);
+  bee->buf[y].len = x + s[0].len;
+  bee->buf[y].cap += s[0].len;
+  free(s[0].chars);
+
+  // make room
+  if(nlines>1)
+  {
+    bee->buf = realloc(bee->buf, sizeof(struct string)*(bee->buf_len+nlines-1));
+    memmove(
+	&bee->buf[y+nlines],
+	&bee->buf[y+1],
+	(bee->buf_len - y -1) * sizeof(struct string));
+  }
+
+  for(int i=1; i<nlines; i++){
+    bee->buf[y+i] = s[i];
+  }
+
+  bee->buf_len += nlines-1;
+}
+
+static inline void bee_delete(struct bee *bee, int x, int y, int xx, int yy){
+  if(xx == bee->buf[yy].len){
+    /*
+    * we want to delete the last linebreak, so we join the whole next line to 
+    * the end of the current one and we delete one more line
+    */
+    yy++;
+    xx=-1;
+  }
+
+  int len = bee->buf[y].len =  x + (bee->buf[yy].len - 1 - xx);
+  bee->buf[y].chars = realloc(bee->buf[y].chars, len +1);
+  bee->buf[y].cap = len;
+  bee->buf[y].chars[x]='\0';
+  strcat(&bee->buf[y].chars[x], &bee->buf[yy].chars[xx+1]);
+
+  int lines_to_delete = yy - y;
+  if(lines_to_delete > 0){
+    for(int i=0; i<lines_to_delete; i++)
+      string_destroy(&bee->buf[y+i]);
+    memmove(&bee->buf[y+1], &bee->buf[y+lines_to_delete],
+	sizeof(struct string*)*(bee->buf_len-1-yy));
+  bee->buf_len -= lines_to_delete;
+  }
+}
+
 static inline struct string *load_file(const char *filename, int *len){
   if (filename == NULL) return 0;
   FILE *fp = fopen(filename, "r");
@@ -201,6 +293,10 @@ static inline struct string *load_file(const char *filename, int *len){
   free(fcontent);
   // calle should free buf
   return buf;
+}
+
+// TODO
+static inline void save_file(){
 }
 
 static inline void print_tb(int x, int y, char* c){
@@ -409,7 +505,7 @@ static inline void n_k(struct bee *bee){
 
   autoscroll(bee);
 }
-static inline void n_x(struct bee *bee){
+static inline void n_x_old(struct bee *bee){
   struct string *line = &bee->buf[bee->y];
 
   int nbytes = bytelen(&line->chars[bee->bx]); 
@@ -421,25 +517,10 @@ static inline void n_x(struct bee *bee){
     bee->vx -= 1;
   }
 }
-static inline void n_x_old(struct bee *bee){
-  int len = bee->buf[bee->y].len;
-  if(len==0) return;
-  char *s = bee->buf[bee->y].chars;
-  memmove(
-    //dest
-    s + bee->bx,
-    // src
-    s + bee->bx + bytelen(s+bee->bx),
-    // n
-    len - (bee->bx + bytelen(s+bee->bx))
-    );
-  bee->buf[bee->y].len -= bytelen(s+bee->bx);
-  current_line_ptr(bee)->chars[current_line_ptr(bee)->len] = '\0';
-  // if bx at the end of the line bx--
-  if(bee->bx == bee->buf[bee->y].len){
-    //bee->bx = utf8prev(s, bee->bx);
-    vx_to_bx(current_line_ptr(bee)->chars, bee->vx==0? 0:bee->vx-1, &bee->bx, &bee->vx);
-  }
+static inline void n_x(struct bee *bee){
+  bee_delete(bee, bee->bx, bee->y, bee->bx, bee->y);
+  if(bee->bx != 0 && bee->bx == bee->buf[bee->y].len)
+    n_h(bee);
 }
 
 static inline void n_i(struct bee *bee){
@@ -487,68 +568,6 @@ static inline char normal_read_key(struct bee *bee){
     return 0;
   }
   return 1;
-}
-
-struct string * string_split_lines(struct string *str, int nlines){
-  /*
-  * canibalizes str
-  */
-  char *s = str->chars;
-  struct string *inserted_lines = malloc(nlines*sizeof(struct string));
-
-  for(int i=0; i<nlines; i++){
-    char *end = strchrnul(s, '\n');
-    inserted_lines[i].chars = malloc(end-s+1);
-    memcpy(inserted_lines[i].chars, s, end-s);
-    inserted_lines[i].chars[end-s] = '\0'; // null terminated string
-    inserted_lines[i].cap = inserted_lines[i].len = end-s;
-    s = end+1;
-  }
-
-  string_destroy(str);
-
-  return inserted_lines;
-}
-
-static inline void bee_insert(struct bee *bee, int x, int y, struct string *s, int nlines){
-  /**
-  * canibalizes s
-  */
-  // append end of insertion line to end of s
-  s[nlines-1].chars = realloc(
-      s[nlines-1].chars,
-      s[nlines-1].len 
-      + bee->buf[y].len - x
-      + 1); 
-  strcat(s[nlines-1].chars,
-     bee->buf[y].chars + x);
-  s[nlines-1].len += bee->buf[y].len - x;
-  s[nlines-1].cap = s[nlines-1].len;
-
-  // insert first line
-  bee->buf[y].chars[x] = '\0';
-  bee->buf[y].chars = realloc(bee->buf[y].chars,
-      x + s[0].len +1);
-  strcat(bee->buf[y].chars, s[0].chars);
-  bee->buf[y].len = x + s[0].len;
-  bee->buf[y].cap += s[0].len;
-  free(s[0].chars);
-
-  // make room
-  if(nlines>1)
-  {
-    bee->buf = realloc(bee->buf, sizeof(struct string)*(bee->buf_len+nlines-1));
-    memmove(
-	&bee->buf[y+nlines],
-	&bee->buf[y+1],
-	(bee->buf_len - y -1) * sizeof(struct string));
-  }
-
-  for(int i=1; i<nlines; i++){
-    bee->buf[y+i] = s[i];
-  }
-
-  bee->buf_len += nlines-1;
 }
 
 static inline void i_esc(struct bee *bee){
@@ -623,6 +642,10 @@ static inline void bee_init(struct bee *bee){
   bee->ins_buf.chars = NULL;
 }
 
+static inline void bee_destroy(struct bee *bee){
+  // TODO
+}
+
 int main(int argc, char **argv){
   if(argc < 2){
     printf("missing file name\naborting\n");
@@ -652,6 +675,7 @@ int main(int argc, char **argv){
   } while(read_key(&bee));
 
   tb_shutdown();
+  bee_destroy(&bee);
 
   return 0;
 }
