@@ -226,6 +226,9 @@ static inline struct change_stack *bee_insert(struct bee *bee, int x, int y, str
 }
 
 static inline struct change_stack *bee_delete(struct bee *bee, int x, int y, int xx, int yy){
+  // TODO: properly prevent cases where we delete the whole thing
+  if(bee->buf_len == 1 && x == 0 && xx == 0 && y == 0 && yy == 0 && bee->buf[0].len==0)
+    return NULL;
 /* BEGIN save to undo stack */
   /*
   struct change_stack *ch = malloc(sizeof(struct change_stack));
@@ -266,7 +269,7 @@ static inline struct change_stack *bee_delete(struct bee *bee, int x, int y, int
   if(xx == bee->buf[yy].len){
     /* we want to delete the last linebreak, so we join the whole next line to 
     * the end of the last line and we delete one more line */
-    yy++;
+    yy++; // WARNING: what if now `yy == buf_len`
     xx=-1;
   }
 
@@ -274,22 +277,19 @@ static inline struct change_stack *bee_delete(struct bee *bee, int x, int y, int
   bee->buf[y].chars = realloc(bee->buf[y].chars, len +1);
   bee->buf[y].len = bee->buf[y].cap = len;
   bee->buf[y].chars[x]='\0';
-  //if(yy < bee->buf_len)
-  strcat(&bee->buf[y].chars[x], &bee->buf[yy].chars[xx+1]);
+  if(yy < bee->buf_len)
+    strcat(&bee->buf[y].chars[x], &bee->buf[yy].chars[xx+1]);
 
   int lines_to_delete = yy - y;
   if(lines_to_delete > 0){
     // we need to keep these for the undo/redo stack
     //for(int i=0; i<lines_to_delete; i++)
     //  string_destroy(&bee->buf[y+1+i]);
-    memmove(
-      &bee->buf[y+1],
-      &bee->buf[yy+1],
-      (bee->buf_len-yy)*sizeof(struct string));
-    //memmove(
-    //  &bee->buf[y+1],
-    //  &bee->buf[yy+1],
-    //  (bee->buf_len-yy)*sizeof(bee->buf[0]));
+    if(yy+1 < bee->buf_len)
+      memmove(
+        &bee->buf[y+1],
+        &bee->buf[yy+1],
+        (bee->buf_len-yy)*sizeof(struct string));
 
     bee->buf_len -= lines_to_delete;
   }
@@ -572,6 +572,9 @@ static inline void n_x(struct bee *bee){
   bee_delete(bee, bee->bx, bee->y, bee->bx, bee->y);
   if(bee->bx != 0 && bee->bx == bee->buf[bee->y].len)
     n_h(bee);
+  if(bee->y == bee->buf_len){
+    n_k(bee);
+  }
 }
 
 static inline void n_i(struct bee *bee){
