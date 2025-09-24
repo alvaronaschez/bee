@@ -171,7 +171,23 @@ static inline int utf8prev(const char* s, int off){
  * @warning Takes ownership of `s`.
  * The caller must not use or free `s` after this call.
  */
-static inline void _bee_insert(struct bee *bee, int x, int y, struct string *s, int nlines){
+static inline struct change_stack *bee_insert(struct bee *bee, int x, int y, struct string *s, int nlines){
+  assert(nlines > 0);
+
+/* BEGIN save to undo stack */
+  struct change_stack *ch = malloc(sizeof(struct change_stack));
+  ch->y = bee->y; ch->bx = bee->bx; ch->vx = bee->vx;
+  ch->toprow = bee->toprow; ch->leftcol = bee->leftcol;
+  ch->op = DEL;
+  ch->cmd.d = (struct delete_command){
+    .x = x, .y = y,
+    .xx = s[nlines-1].len -1 + (nlines>1 ? 0 : x),
+    .yy = y+nlines -1
+  };
+  //ch->next = bee->undo_stack;
+  //bee->undo_stack = ch;
+/* END save to undo stack */
+
   // append end of insertion line to end of s
   s[nlines-1].chars = realloc(
       s[nlines-1].chars,
@@ -192,55 +208,93 @@ static inline void _bee_insert(struct bee *bee, int x, int y, struct string *s, 
   bee->buf[y].cap += s[0].len;
   free(s[0].chars);
 
-  // make room
-  if(nlines>1)
-  {
+  if(nlines > 1){
+    // make room for the insertion
     bee->buf = realloc(bee->buf, sizeof(struct string)*(bee->buf_len+nlines-1));
     memmove(
 	&bee->buf[y+nlines],
 	&bee->buf[y+1],
 	(bee->buf_len - y -1) * sizeof(struct string));
-  }
 
-  for(int i=1; i<nlines; i++){
-    bee->buf[y+i] = s[i];
-  }
+    for(int i=1; i<nlines; i++){
+      bee->buf[y+i] = s[i];
+    }
 
-  bee->buf_len += nlines-1;
-}
-static inline void bee_insert(struct bee *bee, int x, int y, struct string *s, int nlines){
-  _bee_insert(bee, x, y, s, nlines);
-  // TODO: update undo stack
+    bee->buf_len += nlines-1;
+  }
+  return ch;
 }
 
-static inline void _bee_delete(struct bee *bee, int x, int y, int xx, int yy){
+static inline struct change_stack *bee_delete(struct bee *bee, int x, int y, int xx, int yy){
+/* BEGIN save to undo stack */
+  /*
+  struct change_stack *ch = malloc(sizeof(struct change_stack));
+  ch->y = bee->y; ch->bx = bee->bx; ch->vx = bee->vx;
+  ch->toprow = bee->toprow; ch->leftcol = bee->leftcol;
+  ch->op = INS;
+  ch->cmd.i = (struct insert_command){
+    .x = x, .y = y, .txt = NULL, .len = yy - y +1
+  };
+  struct insert_command *icmd = &ch->cmd.i;
+  if(xx == bee->buf[yy].len) // we want to delete the linebreak
+    icmd->len ++;
+  icmd->txt = malloc(sizeof(struct string*)*icmd->len);
+  if(icmd->len == 1){
+    icmd->txt[0].len = icmd->txt[0].cap = xx - x + 1;
+    icmd->txt[0].chars = malloc(icmd->txt[0].len + 1);
+    memcpy(icmd->txt[0].chars, &bee->buf[y].chars[x], xx - x + 1);
+    icmd->txt[0].chars[icmd->txt[0].len] = '\0';
+  } else {
+    // copy first part
+    icmd->txt[0].len = icmd->txt[0].cap = bee->buf[y].len - x + 1;
+    icmd->txt[0].chars = malloc(icmd->txt[0].len + 1);
+    strcpy(icmd->txt[0].chars, &bee->buf[y].chars[x]);
+    for(int i=1; i<icmd->len-1; i++){
+      icmd->txt[i] = bee->buf[y+i];
+    }
+    icmd->txt[icmd->len-1].len = icmd->txt[icmd->len-1].cap = bee->buf[yy].len - xx;
+    icmd->txt[icmd->len-1].chars = malloc(icmd->txt[icmd->len-1].len + 1);
+    memcpy(icmd->txt[icmd->len-1].chars, bee->buf[yy].chars, xx);
+    icmd->txt[icmd->len-1].chars[icmd->txt[icmd->len-1].len] = '\0';
+  }
+  */
+  //ch->next = bee->undo_stack;
+  //bee->undo_stack = ch;
+/* END save to undo stack */
+
+  assert(x<=xx && y<=yy);
   if(xx == bee->buf[yy].len){
-    /*
-    * we want to delete the last linebreak, so we join the whole next line to 
-    * the end of the current one and we delete one more line
-    */
+    /* we want to delete the last linebreak, so we join the whole next line to 
+    * the end of the last line and we delete one more line */
     yy++;
     xx=-1;
   }
 
-  int len = bee->buf[y].len =  x + (bee->buf[yy].len - 1 - xx);
+  int len = x + (bee->buf[yy].len - 1 - xx);
   bee->buf[y].chars = realloc(bee->buf[y].chars, len +1);
-  bee->buf[y].cap = len;
+  bee->buf[y].len = bee->buf[y].cap = len;
   bee->buf[y].chars[x]='\0';
+  //if(yy < bee->buf_len)
   strcat(&bee->buf[y].chars[x], &bee->buf[yy].chars[xx+1]);
 
   int lines_to_delete = yy - y;
   if(lines_to_delete > 0){
-    for(int i=0; i<lines_to_delete; i++)
-      string_destroy(&bee->buf[y+i]);
-    memmove(&bee->buf[y+1], &bee->buf[y+lines_to_delete],
-	sizeof(struct string*)*(bee->buf_len-1-yy));
+    // we need to keep these for the undo/redo stack
+    //for(int i=0; i<lines_to_delete; i++)
+    //  string_destroy(&bee->buf[y+1+i]);
+    memmove(
+      &bee->buf[y+1],
+      &bee->buf[yy+1],
+      (bee->buf_len-yy)*sizeof(struct string));
+    //memmove(
+    //  &bee->buf[y+1],
+    //  &bee->buf[yy+1],
+    //  (bee->buf_len-yy)*sizeof(bee->buf[0]));
+
     bee->buf_len -= lines_to_delete;
   }
-}
-static inline void bee_delete(struct bee *bee, int x, int y, int xx, int yy){
-  _bee_delete(bee, x, y, xx, yy);
-  // TODO: update undo stack
+  //return ch;
+  return NULL;
 }
 
 void change_stack_destroy(struct change_stack *cs){
@@ -341,7 +395,7 @@ static inline void println(int x, int y, char* s, int maxx){
   }
 }
 
-const char *footer_format = "<%s>  \"%s\"  [=%d]  C%d L%d";
+const char *footer_format = "<%s>  \"%s\"  [=%d]  L%d C%d";
 static inline void print_footer(const struct bee *bee){
   uintattr_t bg = fg_color;
   uintattr_t fg = TB_MAGENTA;
@@ -361,7 +415,7 @@ static inline void print_insert_buffer(const struct bee *bee, int *x, int *y){
     if(*c == '\n'){
       (*y)++;
       *x = 0;
-      // TODO: skip chars at right of bee->leftcol 
+      // TODO: skip chars at the left of bee->leftcol 
     } else {
       print_tb(*x, *y, c);
       (*x) += columnlen(c, *x);
@@ -387,11 +441,11 @@ static inline void print_screen(const struct bee *bee){
     int xx = bee->ins_vx - bee->leftcol; // relative to the screen
     int yy = bee->ins_y - bee->toprow; // relative to the screen
     print_insert_buffer(bee, &xx, &yy);
-    int num_lines_inserted = bee->y - bee->ins_y;
     println(xx, yy, bee->buf[bee->ins_y].chars + bee->ins_bx, screen_width);
     tb_set_cursor(xx, yy);
 
     // after insert buffer
+    //int num_lines_inserted = bee->y - bee->ins_y;
     //for(int j = yy+1; j<screen_height && bee->toprow+j < bee->buf_len; j++){
     //  s = skip_n_col(
     //      bee->buf[bee->toprow+j-num_lines_inserted].chars, bee->leftcol, &remainder);
@@ -642,7 +696,6 @@ static inline void bee_init(struct bee *bee){
 }
 
 static inline void bee_destroy(struct bee *bee){
-  // TODO
   for(int i=0; i<bee->buf_len; i++)
     string_destroy(&bee->buf[i]);
   free(bee->buf);
