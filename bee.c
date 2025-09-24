@@ -531,7 +531,9 @@ static inline void n_h(struct bee *bee){
   bee->vxgoal = bee->vx;
 }
 static inline void n_l(struct bee *bee){
-  if(bee->bx + bytelen(current_char_ptr(bee)) < current_line_ptr(bee)->len){
+  //if(bee->bx + bytelen(current_char_ptr(bee)) < current_line_ptr(bee)->len){
+  // allow go till the linebreak character
+  if(bee->bx + bytelen(current_char_ptr(bee)) <= current_line_ptr(bee)->len){
     bee->vx += columnlen(current_char_ptr(bee), bee->vx);
     bee->bx += bytelen(current_char_ptr(bee));
     autoscroll_x(bee);
