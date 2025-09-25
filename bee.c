@@ -58,6 +58,7 @@ struct bee {
 
   struct string ins_buf;
   int ins_y, ins_bx, ins_vx;
+  int ins_toprow, ins_leftcol;
 
   struct change_stack *undo_stack, *redo_stack;
 };
@@ -176,8 +177,11 @@ static inline struct change_stack *bee_insert(struct bee *bee, int x, int y, str
 
 /* BEGIN save to undo stack */
   struct change_stack *ch = malloc(sizeof(struct change_stack));
-  ch->y = bee->y; ch->bx = bee->bx; ch->vx = bee->vx;
-  ch->toprow = bee->toprow; ch->leftcol = bee->leftcol;
+  // TODO: review these two lines and the whole thing of bee->ins_toprow...
+  // are we using insert in places where these will break?
+  // should we manage this outside this function?
+  ch->y = bee->ins_y; ch->bx = bee->ins_bx; ch->vx = bee->ins_vx;
+  ch->toprow = bee->ins_toprow; ch->leftcol = bee->ins_leftcol;
   ch->op = DEL;
   ch->cmd.d = (struct delete_command){
     .x = x, .y = y,
@@ -578,8 +582,10 @@ static inline void n_x(struct bee *bee){
   change_stack_destroy(bee->redo_stack);
   bee->redo_stack = NULL;
   struct change_stack *old_undo_stack = bee->undo_stack;
+
   bee->undo_stack = bee_delete(bee, bee->bx, bee->y, bee->bx, bee->y);
   bee->undo_stack->next = old_undo_stack;
+
   if(bee->bx != 0 && bee->bx == bee->buf[bee->y].len)
     n_h(bee);
   if(bee->y == bee->buf_len){
@@ -589,9 +595,8 @@ static inline void n_x(struct bee *bee){
 
 static inline void n_i(struct bee *bee){
   string_init(&bee->ins_buf);
-  bee->ins_y = bee->y;
-  bee->ins_bx = bee->bx;
-  bee->ins_vx = bee->vx;
+  bee->ins_y = bee->y; bee->ins_bx = bee->bx; bee->ins_vx = bee->vx;
+  bee->ins_toprow = bee->toprow; bee->ins_leftcol = bee->leftcol;
   bee->mode = INSERT;
 }
 
@@ -603,12 +608,24 @@ static inline void n_a(struct bee *bee){
 static inline void resize(const struct bee *bee){
 }
 
+static inline void bee_save_cursor(const struct bee*bee, struct change_stack *ch){
+  ch->y = bee->y; ch->bx = bee->bx; ch->vx = bee->vx;
+  ch->toprow = bee->toprow; ch->leftcol = bee->leftcol;
+}
+static inline void bee_restore_cursor(struct bee *bee, const struct change_stack *ch){
+  bee->y = ch->y; bee->bx = ch->bx; bee->vx = ch->vx;
+  bee->toprow = ch->toprow; bee->leftcol = ch->leftcol;
+}
+
 static inline struct change_stack *apply_cmd_ins(struct bee *bee, struct insert_command c){
   return bee_insert(bee, c.x, c.y, c.txt, c.len);
 }
 static inline struct change_stack *apply_cmd_del(struct bee *bee, struct delete_command c){
   return bee_delete(bee, c.x, c.y, c.xx, c.yy);
 }
+
+
+
 /*
  * @brief returns the change needed to revert the applied change
  */
@@ -622,6 +639,7 @@ static inline struct change_stack *apply_change(struct bee *bee, struct change_s
       result = apply_cmd_del(bee, ch->cmd.d);
       break;
   }
+  bee_restore_cursor(bee, ch);
   return result;
 }
 
@@ -633,8 +651,7 @@ static inline void bee_undo(struct bee *bee){
   struct change_stack *cc = apply_change(bee, c);
 
   bee->undo_stack = bee->undo_stack->next;
-  // TODO: review
-  // we should not free c->cmd.i.txt as it has been owned after applied
+  // we should not free c->cmd.i.txt as it has been owned after `apply_change`
   //c->next = NULL;
   //change_stack_destroy(c);
   free(c);
@@ -697,13 +714,17 @@ static inline char normal_read_key(struct bee *bee){
 }
 
 static inline void i_esc(struct bee *bee){
-  int num_lines_inserted = bee->y -bee->ins_y;
-  int num_lines_ins_buf= num_lines_inserted +1;
+  change_stack_destroy(bee->redo_stack);
+  bee->redo_stack = NULL;
+  struct change_stack *old_undo_stack = bee->undo_stack;
 
+  int num_lines_inserted = bee->y - bee->ins_y;
+  int num_lines_ins_buf = num_lines_inserted +1;
   struct string *inserted_lines = string_split_lines(&bee->ins_buf, num_lines_ins_buf);
-  bee_insert(bee, bee->ins_bx, bee->ins_y, inserted_lines, num_lines_ins_buf);
-  bee->vxgoal = bee->vx;
+  bee->undo_stack = bee_insert(bee, bee->ins_bx, bee->ins_y, inserted_lines, num_lines_ins_buf);
+  bee->undo_stack->next = old_undo_stack;
 
+  bee->vxgoal = bee->vx;
   bee->mode = NORMAL;
 }
 
