@@ -227,10 +227,11 @@ static inline struct change_stack *bee_insert(struct bee *bee, int x, int y, str
 
 static inline struct change_stack *bee_delete(struct bee *bee, int x, int y, int xx, int yy){
   // TODO: properly prevent cases where we delete the whole thing
+  // we always have to preserve at least one empty line
   if(bee->buf_len == 1 && x == 0 && xx == 0 && y == 0 && yy == 0 && bee->buf[0].len==0)
     return NULL;
+
 /* BEGIN save to undo stack */
-  /*
   struct change_stack *ch = malloc(sizeof(struct change_stack));
   ch->y = bee->y; ch->bx = bee->bx; ch->vx = bee->vx;
   ch->toprow = bee->toprow; ch->leftcol = bee->leftcol;
@@ -239,28 +240,37 @@ static inline struct change_stack *bee_delete(struct bee *bee, int x, int y, int
     .x = x, .y = y, .txt = NULL, .len = yy - y +1
   };
   struct insert_command *icmd = &ch->cmd.i;
-  if(xx == bee->buf[yy].len) // we want to delete the linebreak
-    icmd->len ++;
-  icmd->txt = malloc(sizeof(struct string*)*icmd->len);
-  if(icmd->len == 1){
+  int extra_line = xx == bee->buf[yy].len ? 1 : 0; // we want to delete the linebreak // TODO: it's not that easy
+  icmd->len += extra_line;
+  icmd->txt = malloc(sizeof(struct string)*icmd->len);
+  if(icmd->len == 1 + extra_line){
     icmd->txt[0].len = icmd->txt[0].cap = xx - x + 1;
     icmd->txt[0].chars = malloc(icmd->txt[0].len + 1);
     memcpy(icmd->txt[0].chars, &bee->buf[y].chars[x], xx - x + 1);
     icmd->txt[0].chars[icmd->txt[0].len] = '\0';
+    if(extra_line)
+      string_init(&icmd->txt[icmd->len-1]);
   } else {
     // copy first part
     icmd->txt[0].len = icmd->txt[0].cap = bee->buf[y].len - x + 1;
     icmd->txt[0].chars = malloc(icmd->txt[0].len + 1);
     strcpy(icmd->txt[0].chars, &bee->buf[y].chars[x]);
-    for(int i=1; i<icmd->len-1; i++){
-      icmd->txt[i] = bee->buf[y+i];
+    // copy middle part
+    for(int i=1; i<icmd->len-1-extra_line; i++){
+      // we can try to avoid copying
+      // icmd->txt[i] = bee->buf[y+i];
+      icmd->txt[i].cap = icmd->txt[i].len = bee->buf[y+i].len;
+      icmd->txt[i].chars = malloc(icmd->txt[i].len + 1);
+      strcpy(icmd->txt[i].chars, bee->buf[y+i].chars);
     }
+    if(extra_line)
+      string_init(&icmd->txt[icmd->len-1]);
+    // copy last part
     icmd->txt[icmd->len-1].len = icmd->txt[icmd->len-1].cap = bee->buf[yy].len - xx;
     icmd->txt[icmd->len-1].chars = malloc(icmd->txt[icmd->len-1].len + 1);
     memcpy(icmd->txt[icmd->len-1].chars, bee->buf[yy].chars, xx);
     icmd->txt[icmd->len-1].chars[icmd->txt[icmd->len-1].len] = '\0';
   }
-  */
   //ch->next = bee->undo_stack;
   //bee->undo_stack = ch;
 /* END save to undo stack */
@@ -284,7 +294,8 @@ static inline struct change_stack *bee_delete(struct bee *bee, int x, int y, int
   if(lines_to_delete > 0){
     // we need to keep these for the undo/redo stack
     //for(int i=0; i<lines_to_delete; i++)
-    //  string_destroy(&bee->buf[y+1+i]);
+    //  if(y+1+i < bee->buf_len)
+    //    string_destroy(&bee->buf[y+1+i]);
     if(yy+1 < bee->buf_len)
       memmove(
         &bee->buf[y+1],
@@ -293,8 +304,7 @@ static inline struct change_stack *bee_delete(struct bee *bee, int x, int y, int
 
     bee->buf_len -= lines_to_delete;
   }
-  //return ch;
-  return NULL;
+  return ch;
 }
 
 void change_stack_destroy(struct change_stack *cs){
@@ -303,20 +313,14 @@ void change_stack_destroy(struct change_stack *cs){
     aux = cs->next;
     if(cs->op == INS){
       for(int i=0; i<cs->cmd.i.len; i++)
-	string_destroy(cs->cmd.i.txt);
+	free(cs->cmd.i.txt[i].chars);
       free(cs->cmd.i.txt);
     }
     free(cs);
     cs = aux;
   }
 }
-// TODO: review if these are needed
-void apply_cmd_ins(struct bee *bee, struct insert_command c){
-  bee_insert(bee, c.x, c.y, c.txt, c.len);
-}
-void apply_cmd_del(struct bee *bee, struct delete_command c){
-  bee_delete(bee, c.x, c.y, c.xx, c.yy);
-}
+
 
 static inline struct string *load_file(const char *filename, int *len){
   if (filename == NULL) return 0;
@@ -571,7 +575,11 @@ static inline void n_k(struct bee *bee){
 }
 
 static inline void n_x(struct bee *bee){
-  bee_delete(bee, bee->bx, bee->y, bee->bx, bee->y);
+  change_stack_destroy(bee->redo_stack);
+  bee->redo_stack = NULL;
+  struct change_stack *old_undo_stack = bee->undo_stack;
+  bee->undo_stack = bee_delete(bee, bee->bx, bee->y, bee->bx, bee->y);
+  bee->undo_stack->next = old_undo_stack;
   if(bee->bx != 0 && bee->bx == bee->buf[bee->y].len)
     n_h(bee);
   if(bee->y == bee->buf_len){
@@ -593,6 +601,64 @@ static inline void n_a(struct bee *bee){
 }
 
 static inline void resize(const struct bee *bee){
+}
+
+static inline struct change_stack *apply_cmd_ins(struct bee *bee, struct insert_command c){
+  return bee_insert(bee, c.x, c.y, c.txt, c.len);
+}
+static inline struct change_stack *apply_cmd_del(struct bee *bee, struct delete_command c){
+  return bee_delete(bee, c.x, c.y, c.xx, c.yy);
+}
+/*
+ * @brief returns the change needed to revert the applied change
+ */
+static inline struct change_stack *apply_change(struct bee *bee, struct change_stack *ch){
+  struct change_stack *result;
+  switch(ch->op){
+    case INS:
+      result = apply_cmd_ins(bee, ch->cmd.i);
+      break;
+    case DEL:
+      result = apply_cmd_del(bee, ch->cmd.d);
+      break;
+  }
+  return result;
+}
+
+#define n_u(bee) bee_undo(bee)
+static inline void bee_undo(struct bee *bee){
+  if(bee->undo_stack == NULL)
+    return;
+  struct change_stack *c = bee->undo_stack;
+  struct change_stack *cc = apply_change(bee, c);
+
+  bee->undo_stack = bee->undo_stack->next;
+  // TODO: review
+  // we should not free c->cmd.i.txt as it has been owned after applied
+  //c->next = NULL;
+  //change_stack_destroy(c);
+  free(c);
+
+  cc->next = bee->redo_stack ? bee->redo_stack->next : NULL;
+  bee->redo_stack = cc;
+}
+
+#define n_Cr(bee) bee_redo(bee)
+static inline void bee_redo(struct bee *bee){
+  if(bee->redo_stack == NULL)
+    return;
+  struct change_stack *c = bee->redo_stack;
+  struct change_stack *cc = apply_change(bee, c);
+
+  bee->redo_stack = bee->redo_stack->next;
+  // TODO: review
+  // we should not free c->cmd.i.txt as it has been owned after applied
+  //c->next = NULL;
+  //change_stack_destroy(c);
+  free(c);
+
+  cc->next = bee->redo_stack ? bee->undo_stack->next : NULL;
+  bee->undo_stack = cc;
 }
 
 static inline char normal_read_key(struct bee *bee){
@@ -618,10 +684,14 @@ static inline char normal_read_key(struct bee *bee){
     n_l(bee); break;
   case 'x':
     n_x(bee); break;
+  case 'u':
+    n_u(bee); break;
   }
   else if(ev.key!=0) switch(ev.key){
   case TB_KEY_CTRL_Q:
     return 0;
+  case TB_KEY_CTRL_R:
+    n_Cr(bee); break;
   }
   return 1;
 }
