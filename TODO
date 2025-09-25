@@ -1,3 +1,5 @@
-- save to file
 - undo/redo (wip)
+- save to file
 - yank/paste
+- visual mode
+
