@@ -1,5 +1,6 @@
 - undo/redo (wip)
 - save to file
+- resize
 - yank/paste
 - visual mode
 - tests
