@@ -18,6 +18,18 @@
 #define MAX(a,b) ((a)>(b)?(a):(b))
 #define MIN(a,b) ((a)<(b)?(a):(b))
 
+//#define DEBUG
+#ifdef DEBUG
+#include <time.h>
+inline static void flog(const char *msg){
+  time_t t = time(NULL);
+  FILE *f = fopen("./bee.log", "a");
+  fprintf(f, "%s - %s\n", ctime(&t), msg);
+}
+#else
+inline static void flog(const char *msg){}
+#endif
+
 enum mode {
   NORMAL, INSERT, COMMAND
 };
@@ -806,6 +818,8 @@ int main(int argc, char **argv){
     printf("missing file name\naborting\n");
     return 1;
   }
+
+  flog("hey");
 
   setlocale(LC_CTYPE, LOCALE);
 
