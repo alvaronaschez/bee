@@ -242,7 +242,7 @@ static inline struct change_stack *bee_insert(struct bee *bee, int x, int y, str
 }
 
 static inline struct change_stack *bee_delete(struct bee *bee, int x, int y, int xx, int yy){
-  // TODO: properly prevent cases where we delete the whole thing
+  // TODO: properly prevent cases where we delete the whole buffer
   // we always have to preserve at least one empty line
   if(bee->buf_len == 1 && x == 0 && xx == 0 && y == 0 && yy == 0 && bee->buf[0].len==0)
     return NULL;
