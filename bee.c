@@ -668,7 +668,8 @@ static inline void bee_undo(struct bee *bee){
   //change_stack_destroy(c);
   free(c);
 
-  cc->next = bee->redo_stack ? bee->redo_stack->next : NULL;
+  //cc->next = bee->redo_stack ? bee->redo_stack->next : NULL;
+  cc->next = bee->redo_stack;
   bee->redo_stack = cc;
 }
 
@@ -686,7 +687,8 @@ static inline void bee_redo(struct bee *bee){
   //change_stack_destroy(c);
   free(c);
 
-  cc->next = bee->redo_stack ? bee->undo_stack->next : NULL;
+  //cc->next = bee->undo_stack ? bee->undo_stack->next : NULL;
+  cc->next = bee->undo_stack;
   bee->undo_stack = cc;
 }
 
