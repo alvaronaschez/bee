@@ -121,12 +121,6 @@ struct string * string_split_lines(struct string *str, int nlines){
   return inserted_lines;
 }
 
-
-static inline char *current_char_ptr(struct bee* bee){
-  //return bee->buf[bee->y].chars + bee->bx;
-  return &bee->buf[Y].chars[X];
-}
-
 #define bytelen utf8len
 static inline int utf8len(const char* s){
   if((s[0]&0x80) == 0x00) return 1; // 0xxx_xxxx
@@ -509,10 +503,10 @@ static inline void print_screen(const struct bee *bee){
 
 static inline void autoscroll_x(struct bee *bee){
   // cursor too far to the right
-  if(bee->vx + columnlen(current_char_ptr(bee), bee->vx) > screen_width + bee->leftcol){
+  if(bee->vx + columnlen(&bee->buf[Y].chars[X], bee->vx) > screen_width + bee->leftcol){
     int bx_leftcol, vx_leftcol;
     vx_to_bx(bee->buf[bee->y].chars, bee->leftcol, &bx_leftcol, &vx_leftcol);
-    while(bee->vx + columnlen(current_char_ptr(bee), bee->vx) > screen_width + bee->leftcol){
+    while(bee->vx + columnlen(&bee->buf[Y].chars[X], bee->vx) > screen_width + bee->leftcol){
       bee->leftcol += columnlen(bee->buf[bee->y].chars + bx_leftcol, bee->leftcol);
       bx_leftcol += bytelen(bee->buf[bee->y].chars + bx_leftcol);
     }
@@ -540,22 +534,22 @@ static inline void n_h(struct bee *bee){
   if(bee->bx > 0){
     //vx_to_bx(bee->buf[Y].chars, bee->vx-1, &bee->bx, &bee->vx);
     // that would be enough, the following is an optimization
-    if ( *(current_char_ptr(bee)-1) == '\t' ) {
+    if ( *(&bee->buf[Y].chars[X]-1) == '\t' ) {
       vx_to_bx(bee->buf[Y].chars, bee->vx-1, &bee->bx, &bee->vx);
     } else {
       bee->bx = utf8prev(bee->buf[Y].chars, bee->bx);
-      bee->vx -= columnlen(current_char_ptr(bee), bee->vx);
+      bee->vx -= columnlen(&bee->buf[Y].chars[X], bee->vx);
     }
     autoscroll_x(bee);
   }
   bee->vxgoal = bee->vx;
 }
 static inline void n_l(struct bee *bee){
-  //if(bee->bx + bytelen(current_char_ptr(bee)) < bee->buf[Y].len){
+  //if(bee->bx + bytelen(&bee->buf[Y].chars[X]) < bee->buf[Y].len){
   // allow go till the linebreak character
-  if(bee->bx + bytelen(current_char_ptr(bee)) <= bee->buf[Y].len){
-    bee->vx += columnlen(current_char_ptr(bee), bee->vx);
-    bee->bx += bytelen(current_char_ptr(bee));
+  if(bee->bx + bytelen(&bee->buf[Y].chars[X]) <= bee->buf[Y].len){
+    bee->vx += columnlen(&bee->buf[Y].chars[X], bee->vx);
+    bee->bx += bytelen(&bee->buf[Y].chars[X]);
     autoscroll_x(bee);
   }
   bee->vxgoal = bee->vx;
@@ -563,9 +557,9 @@ static inline void n_l(struct bee *bee){
 
 static inline void n_l_pastend(struct bee *bee){
   // you can go past the end of the line so you can append at the end of the line
-  if(bee->bx + bytelen(current_char_ptr(bee)) <= bee->buf[Y].len){
-    bee->vx += columnlen(current_char_ptr(bee), bee->vx);
-    bee->bx += bytelen(current_char_ptr(bee));
+  if(bee->bx + bytelen(&bee->buf[Y].chars[X]) <= bee->buf[Y].len){
+    bee->vx += columnlen(&bee->buf[Y].chars[X], bee->vx);
+    bee->bx += bytelen(&bee->buf[Y].chars[X]);
     autoscroll_x(bee);
   }
   bee->vxgoal = bee->vx;
