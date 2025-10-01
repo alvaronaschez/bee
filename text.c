@@ -174,13 +174,16 @@ void test_insert(void) {
   assert(out_cmd.xx == expected_cmd.xx);
 
   // undo test
-  text_delete(t, out_cmd);
+  struct insert_cmd out_cmd2 = text_delete(t, out_cmd);
 
   assert(original_t->len == t->len);
   for(int i=0; i<t->len; i++){
     assert(!strcmp(original_t->p[i].p, t->p[i].p));
     assert(original_t->p[i].len == t->p[i].len);
   }
+
+  assert(out_cmd2.y == cmd.y);
+  assert(out_cmd2.x == cmd.x);
 }
 
 int main(void) {
