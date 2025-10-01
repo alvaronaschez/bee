@@ -41,13 +41,18 @@ struct insert_cmd delete_cmd_inverse(const struct text *txt, const struct delete
   ret.x = x; ret.y = y;
 
   // copy all lines involved
-  int len = ret.txt.len =  yy - y + 1;
+  int extra_line = xx == txt->p[yy].len ? 1:0; 
+  int len = ret.txt.len =  yy - y + 1 + extra_line;
   ret.txt.p = malloc(len*sizeof(struct string));
-  for(int i=0; i<len; i++){
+  for(int i=0; i<len-extra_line; i++){
     ret.txt.p[i].p = malloc(txt->p[y+i].len +1);
     strcpy(ret.txt.p[i].p, txt->p[y+i].p);
     ret.txt.p[i].len = txt->p[y+i].len;
     ret.txt.p[i].cap = txt->p[y+i].cap;
+  }
+  if(extra_line){
+    ret.txt.p[len-1].p = calloc(1,1);
+    ret.txt.p[len-1].len = ret.txt.p[len-1].cap = 0;
   }
 
   // delete parts we don't need
@@ -120,7 +125,7 @@ struct insert_cmd text_delete(struct text *txt, struct delete_cmd cmd) {
 
   int x = cmd.x; int y = cmd.y; int xx = cmd.xx; int yy = cmd.yy;
 
-  if(x == txt->p[y].len){} // ¿?
+  if(x == txt->p[y].len){} // ¿? TODO
   if(xx == txt->p[yy].len){
     yy++;
     xx=-1;
@@ -151,6 +156,28 @@ struct insert_cmd text_delete(struct text *txt, struct delete_cmd cmd) {
   return retval;
 }
 
+void assert_text_equals(const struct text *t1, const struct text *t2){
+  assert(t1->len == t2->len);
+  for(int i=0; i<t1->len; i++){
+    assert(!strcmp(t1->p[i].p, t2->p[i].p));
+    assert(t1->p[i].len == t2->p[i].len);
+    assert(t1->p[i].cap == t2->p[i].cap);
+  }
+}
+
+void assert_insert_cmd_equals(const struct insert_cmd *c1, const struct insert_cmd *c2) {
+  assert(c1->x == c2->x);
+  assert(c1->y == c2->y);
+  assert_text_equals(&c1->txt, &c2->txt);
+}
+
+void assert_delete_cmd_equals(const struct delete_cmd *c1, const struct delete_cmd *c2){
+  assert(c1->x == c2->x);
+  assert(c1->y == c2->y);
+  assert(c1->xx == c2->xx);
+  assert(c1->yy == c2->yy);
+}
+
 void test_insert(void) {
   struct text *original_t = text_from((char *[]){"Hola", "que", "tal"}, 3);
   struct text *t = text_from((char *[]){"Hola", "que", "tal"}, 3);
@@ -161,29 +188,14 @@ void test_insert(void) {
 
   struct delete_cmd out_cmd = text_insert(t, cmd); 
 
-  assert(expected->len == t->len);
-  for(int i=0; i<t->len; i++){
-    assert(!strcmp(expected->p[i].p, t->p[i].p));
-    assert(expected->p[i].len == t->p[i].len);
-    assert(expected->p[i].cap == t->p[i].cap);
-  }
-
-  assert(out_cmd.y == expected_cmd.y);
-  assert(out_cmd.x == expected_cmd.x);
-  assert(out_cmd.yy == expected_cmd.yy);
-  assert(out_cmd.xx == expected_cmd.xx);
+  assert_text_equals(expected, t);
+  assert_delete_cmd_equals(&out_cmd, &expected_cmd);
 
   // undo test
   struct insert_cmd out_cmd2 = text_delete(t, out_cmd);
 
-  assert(original_t->len == t->len);
-  for(int i=0; i<t->len; i++){
-    assert(!strcmp(original_t->p[i].p, t->p[i].p));
-    assert(original_t->p[i].len == t->p[i].len);
-  }
-
-  assert(out_cmd2.y == cmd.y);
-  assert(out_cmd2.x == cmd.x);
+  assert_text_equals(original_t, t);
+  assert_insert_cmd_equals(&out_cmd2, &cmd);
 }
 
 int main(void) {
