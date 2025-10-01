@@ -15,8 +15,8 @@
 #define footerheight 1
 #define screen_height (tb_height() - footerheight)
 #define screen_width (tb_width())
-#define Y bee->y
-#define X bee->bx
+#define YY bee->y
+#define XX bee->bx
 #define MAX(a,b) ((a)>(b)?(a):(b))
 #define MIN(a,b) ((a)<(b)?(a):(b))
 
@@ -503,10 +503,10 @@ static inline void print_screen(const struct bee *bee){
 
 static inline void autoscroll_x(struct bee *bee){
   // cursor too far to the right
-  if(bee->vx + columnlen(&bee->buf[Y].chars[X], bee->vx) > screen_width + bee->leftcol){
+  if(bee->vx + columnlen(&bee->buf[YY].chars[XX], bee->vx) > screen_width + bee->leftcol){
     int bx_leftcol, vx_leftcol;
     vx_to_bx(bee->buf[bee->y].chars, bee->leftcol, &bx_leftcol, &vx_leftcol);
-    while(bee->vx + columnlen(&bee->buf[Y].chars[X], bee->vx) > screen_width + bee->leftcol){
+    while(bee->vx + columnlen(&bee->buf[YY].chars[XX], bee->vx) > screen_width + bee->leftcol){
       bee->leftcol += columnlen(bee->buf[bee->y].chars + bx_leftcol, bee->leftcol);
       bx_leftcol += bytelen(bee->buf[bee->y].chars + bx_leftcol);
     }
@@ -532,24 +532,24 @@ static inline void autoscroll(struct bee *bee){
 
 static inline void n_h(struct bee *bee){
   if(bee->bx > 0){
-    //vx_to_bx(bee->buf[Y].chars, bee->vx-1, &bee->bx, &bee->vx);
+    //vx_to_bx(bee->buf[YY].chars, bee->vx-1, &bee->bx, &bee->vx);
     // that would be enough, the following is an optimization
-    if ( *(&bee->buf[Y].chars[X]-1) == '\t' ) {
-      vx_to_bx(bee->buf[Y].chars, bee->vx-1, &bee->bx, &bee->vx);
+    if ( *(&bee->buf[YY].chars[XX]-1) == '\t' ) {
+      vx_to_bx(bee->buf[YY].chars, bee->vx-1, &bee->bx, &bee->vx);
     } else {
-      bee->bx = utf8prev(bee->buf[Y].chars, bee->bx);
-      bee->vx -= columnlen(&bee->buf[Y].chars[X], bee->vx);
+      bee->bx = utf8prev(bee->buf[YY].chars, bee->bx);
+      bee->vx -= columnlen(&bee->buf[YY].chars[XX], bee->vx);
     }
     autoscroll_x(bee);
   }
   bee->vxgoal = bee->vx;
 }
 static inline void n_l(struct bee *bee){
-  //if(bee->bx + bytelen(&bee->buf[Y].chars[X]) < bee->buf[Y].len){
+  //if(bee->bx + bytelen(&bee->buf[YY].chars[XX]) < bee->buf[YY].len){
   // allow go till the linebreak character
-  if(bee->bx + bytelen(&bee->buf[Y].chars[X]) <= bee->buf[Y].len){
-    bee->vx += columnlen(&bee->buf[Y].chars[X], bee->vx);
-    bee->bx += bytelen(&bee->buf[Y].chars[X]);
+  if(bee->bx + bytelen(&bee->buf[YY].chars[XX]) <= bee->buf[YY].len){
+    bee->vx += columnlen(&bee->buf[YY].chars[XX], bee->vx);
+    bee->bx += bytelen(&bee->buf[YY].chars[XX]);
     autoscroll_x(bee);
   }
   bee->vxgoal = bee->vx;
@@ -557,9 +557,9 @@ static inline void n_l(struct bee *bee){
 
 static inline void n_l_pastend(struct bee *bee){
   // you can go past the end of the line so you can append at the end of the line
-  if(bee->bx + bytelen(&bee->buf[Y].chars[X]) <= bee->buf[Y].len){
-    bee->vx += columnlen(&bee->buf[Y].chars[X], bee->vx);
-    bee->bx += bytelen(&bee->buf[Y].chars[X]);
+  if(bee->bx + bytelen(&bee->buf[YY].chars[XX]) <= bee->buf[YY].len){
+    bee->vx += columnlen(&bee->buf[YY].chars[XX], bee->vx);
+    bee->bx += bytelen(&bee->buf[YY].chars[XX]);
     autoscroll_x(bee);
   }
   bee->vxgoal = bee->vx;
@@ -570,7 +570,7 @@ static inline void n_j(struct bee *bee){
   bee->y++;
 
   // adjust column position
-  vx_to_bx(bee->buf[Y].chars, bee->vxgoal, &bee->bx, &bee->vx);
+  vx_to_bx(bee->buf[YY].chars, bee->vxgoal, &bee->bx, &bee->vx);
 
   autoscroll(bee);
 }
@@ -579,7 +579,7 @@ static inline void n_k(struct bee *bee){
   bee->y--;
 
   // adjust column position
-  vx_to_bx(bee->buf[Y].chars, bee->vxgoal, &bee->bx, &bee->vx);
+  vx_to_bx(bee->buf[YY].chars, bee->vxgoal, &bee->bx, &bee->vx);
 
   autoscroll(bee);
 }
