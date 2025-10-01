@@ -178,7 +178,7 @@ void assert_delete_cmd_equals(const struct delete_cmd *c1, const struct delete_c
   assert(c1->yy == c2->yy);
 }
 
-void test_insert(void) {
+void test_1(void) {
   struct text *original_t = text_from((char *[]){"Hola", "que", "tal"}, 3);
   struct text *t = text_from((char *[]){"Hola", "que", "tal"}, 3);
   struct text *n = text_from((char *[]){"hoho", "I am Santa!", ""}, 3);
@@ -199,7 +199,7 @@ void test_insert(void) {
 }
 
 int main(void) {
-  test_insert();
+  test_1();
 
   return 0;
 }
