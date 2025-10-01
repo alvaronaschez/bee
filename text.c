@@ -92,17 +92,51 @@ struct delete_cmd text_insert(struct text *txt, struct insert_cmd cmd) {
 
 struct insert_cmd text_delete(struct text *txt, struct delete_cmd cmd) {
   struct insert_cmd retval = delete_cmd_inverse(txt, &cmd);
+
+  int x = cmd.x; int y = cmd.y; int xx = cmd.xx; int yy = cmd.yy;
+
+  if(x == txt->p[y].len){} // ¿?
+  if(xx == txt->p[yy].len){
+    yy++;
+    xx=-1;
+  } 
+
+  int len = x + (txt->p[yy].len - 1 - xx);
+  txt->p[y].p = realloc(txt->p[y].p, len + 1);
+  txt->p[y].len = txt->p[y].cap = len;
+  txt->p[y].p[x] = '\0';
+  if(yy < txt->len)
+    strcat(&txt->p[y].p[x], &txt->p[yy].p[xx+1]);
+
+  if(y < yy){
+    int lines_to_delete = yy - y;
+    for(int i=0; i<lines_to_delete; i++)
+      if(y+1+i < txt->len)
+	free(txt->p[y+1+i].p);
+    if(yy+1 < txt->len){
+      memmove(
+	  &txt->p[y+1],
+	  &txt->p[yy+1],
+	  (txt->len-yy)*sizeof(struct string));
+    }
+    txt->len -=lines_to_delete;
+    txt->p = realloc(txt->p, txt->len*sizeof(struct string));
+  }
+
   return retval;
 }
 
 void test_insert(void) {
+  struct text *original_t = text_from((char *[]){"Hola", "que", "tal"}, 3);
   struct text *t = text_from((char *[]){"Hola", "que", "tal"}, 3);
   struct text *n = text_from((char *[]){"hoho", "I am Santa!", ""}, 3);
   struct text *expected = text_from((char *[]){"Hohoho", "I am Santa!", "la", "que", "tal"}, 5);
   struct insert_cmd cmd = { .txt = *n, .y = 0, .x = 2 };
   struct delete_cmd expected_cmd = {.x=2, .y=0, .xx=11, .yy=1};
+
   struct delete_cmd out_cmd = text_insert(t, cmd); 
 
+  //for(int i=0; i<t->len; i++) printf("%s\n", t->p[i].p);
   for(int i=0; i<t->len; i++){
     assert(!strcmp(expected->p[i].p, t->p[i].p));
   }
@@ -111,6 +145,13 @@ void test_insert(void) {
   assert(out_cmd.x == expected_cmd.x);
   assert(out_cmd.yy == expected_cmd.yy);
   assert(out_cmd.xx == expected_cmd.xx);
+
+  // undo test
+  text_delete(t, out_cmd);
+
+  //for(int i=0; i<t->len; i++) printf("%s\n", t->p[i].p);
+  for(int i=0; i<t->len; i++)
+    assert(!strcmp(original_t->p[i].p, t->p[i].p));
 }
 
 int main(void) {
