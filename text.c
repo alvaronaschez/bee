@@ -40,12 +40,16 @@ struct insert_cmd delete_cmd_inverse(const struct text *txt, const struct delete
   };
 }
 
-struct delete_cmd insert_cmd_inverse(const struct insert_cmd *cmd) {
-  struct text txt = cmd->txt;
+struct delete_cmd insert_cmd_inverse(const struct text *txt, const struct insert_cmd *cmd) {
+  struct text ntxt = cmd->txt;
   int x = cmd->x; int y = cmd->y;
-  int yy = y + txt.len-1;
-  int xx = txt.p[txt.len-1].len -1 + (y==yy? x: 0);
-  return (struct delete_cmd){ .x = x, .y = y, .xx = xx, .yy = yy };
+  int yy = y + ntxt.len-1;
+  int xx = ntxt.p[ntxt.len-1].len -1 + (y==yy? x: 0);
+  if(xx == -1){
+    yy--;
+    xx = txt->p[yy].len;
+  }
+  return (struct delete_cmd){.x = x, .y = y, .xx = xx, .yy = yy};
 }
 
 // takes ownership of cmd.txt
@@ -53,8 +57,6 @@ struct delete_cmd text_insert(struct text *txt, struct insert_cmd cmd) {
   int x = cmd.x; int y = cmd.y; struct text ntxt = cmd.txt;
   int yy = y+ntxt.len-1;
   int xx = ntxt.p[ntxt.len-1].len-1 + (y==yy? x : 0);
-  
-  struct delete_cmd retval = insert_cmd_inverse(&cmd);
 
   // backup the rest of the insertion line for later
   int aux_len = txt->p[y].len - x;
@@ -84,6 +86,7 @@ struct delete_cmd text_insert(struct text *txt, struct insert_cmd cmd) {
   strcat(txt->p[yy].p, aux);
   free(aux);
 
+  struct delete_cmd retval = insert_cmd_inverse(txt, &cmd);
   return retval;
 }
 
@@ -92,22 +95,26 @@ struct insert_cmd text_delete(struct text *txt, struct delete_cmd cmd) {
   return retval;
 }
 
-void test_1(void) {
+void test_insert(void) {
   struct text *t = text_from((char *[]){"hola", "que", "tal"}, 3);
   struct text *n = text_from((char *[]){"hoho", "I am Santa!", ""}, 3);
+  struct text *expected = text_from((char *[]){"hohoho", "I am Santa!", "la", "que", "tal"}, 5);
   struct insert_cmd cmd = { .txt = *n, .y = 0, .x = 2 };
-  struct text *res = text_from((char *[]){"hohoho", "I am Santa!", "la", "que", "tal"}, 5);
-
-  text_insert(t, cmd); 
+  struct delete_cmd expected_cmd = {.x=2, .y=0, .xx=11, .yy=1};
+  struct delete_cmd out_cmd = text_insert(t, cmd); 
 
   for(int i=0; i<t->len; i++){
-    assert(!strcmp(res->p[i].p, t->p[i].p));
-    //printf("%s\n", t->p[i].p);
+    assert(!strcmp(expected->p[i].p, t->p[i].p));
   }
+
+  assert(out_cmd.y == expected_cmd.y);
+  assert(out_cmd.x == expected_cmd.x);
+  assert(out_cmd.yy == expected_cmd.yy);
+  assert(out_cmd.xx == expected_cmd.xx);
 }
 
 int main(void) {
-  test_1();
+  test_insert();
 
   return 0;
 }
