@@ -64,10 +64,12 @@ struct insert_cmd delete_cmd_inverse(const struct text *txt, const struct delete
   strcpy(ret.txt.p[0].p, &aux[x]);
   free(aux);
   // last line
-  ret.txt.p[len-1].p = realloc(ret.txt.p[len-1].p, xx+1);
-  ret.txt.p[len-1].p[xx] = '\0';
-  ret.txt.p[len-1].len = xx;
-  ret.txt.p[len-1].cap = ret.txt.p[len-1].len;
+  if(!extra_line){
+    ret.txt.p[len-1].p = realloc(ret.txt.p[len-1].p, xx+1);
+    ret.txt.p[len-1].p[xx] = '\0';
+    ret.txt.p[len-1].len = xx;
+    ret.txt.p[len-1].cap = ret.txt.p[len-1].len;
+  }
 
   return ret;
 }
@@ -218,28 +220,10 @@ void test_3(void){
   struct delete_cmd del_cmd = {.y=1, .x=3, .yy=1, .xx=3};
   struct insert_cmd ins_cmd = text_delete(t, del_cmd);
   assert_text_equals(t, expected);
+
   // test undo
   text_insert(t, ins_cmd);
-
-  printf("x=%d\n", ins_cmd.x);
-  printf("y=%d\n", ins_cmd.y);
-
-  //printf("&%d\n", ins_cmd.txt.len);
-  //for(int i=0; i<ins_cmd.txt.len; i++){
-  //  printf("%d\n", ins_cmd.txt.p[i].len);
-  //  printf("%s\n", ins_cmd.txt.p[i].p);
-  //}
-
-  /*
-  for(int i=0; i<t->len; i++){
-    printf("--%d--\n", i);
-    printf("%d - %d\n", t->p[i].len, o->p[i].len);
-    printf("%s\n", t->p[i].p);
-  }
-  */
-
-  // TODO: make it pass
-  //assert_text_equals(t, o);
+  assert_text_equals(t, o);
 }
 void test_4(void){
   struct text *o = text_from((char *[]){"foo", "bar", "jam"}, 3);
@@ -250,6 +234,7 @@ void test_4(void){
   struct delete_cmd del_cmd = text_insert(t, ins_cmd);
   assert_text_equals(t, expected);
   // test undo
+  // TODO: make it pass
   //text_delete(t, del_cmd); 
   //assert_text_equals(t, o);
 }
