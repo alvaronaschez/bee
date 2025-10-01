@@ -36,8 +36,32 @@ struct text *text_from(char **arr, int len){
 }
 
 struct insert_cmd delete_cmd_inverse(const struct text *txt, const struct delete_cmd *cmd) {
-  return (struct insert_cmd){
-  };
+  int x = cmd->x; int y = cmd->y; int xx = cmd->xx; int yy = cmd->yy;
+  struct insert_cmd ret;
+  ret.x = x; ret.y = y;
+
+  // copy all lines involved
+  int len = ret.txt.len =  yy - y + 1;
+  ret.txt.p = malloc(len*sizeof(struct string));
+  for(int i=0; i<len; i++){
+    ret.txt.p[i].p = malloc(txt->p[y+i].len +1);
+    strcpy(ret.txt.p[i].p, txt->p[y+i].p);
+    ret.txt.p[i].len = txt->p[y+i].len;
+    ret.txt.p[i].cap = txt->p[y+i].cap;
+  }
+
+  // delete parts we don't need
+  char *aux = ret.txt.p[0].p;
+  ret.txt.p[0].len -= x;
+  ret.txt.p[0].cap = ret.txt.p[0].len;
+  ret.txt.p[0].p = malloc(ret.txt.p[0].len+1);
+  strcpy(ret.txt.p[0].p, &aux[x]);
+  free(aux);
+  ret.txt.p[len-1].p = realloc(ret.txt.p[len-1].p, xx);
+  ret.txt.p[len-1].p[xx] = '\0';
+  ret.txt.p[len-1].len = ret.txt.p[len-1].cap = xx -1;
+
+  return ret;
 }
 
 struct delete_cmd insert_cmd_inverse(const struct text *txt, const struct insert_cmd *cmd) {
@@ -65,7 +89,8 @@ struct delete_cmd text_insert(struct text *txt, struct insert_cmd cmd) {
 
   // copy the first line
   txt->p[y].p[x] = '\0';
-  txt->p[y].p = realloc(txt->p[y].p, x + ntxt.p[0].len + 1);
+  txt->p[y].len = txt->p[y].cap = x + ntxt.p[0].len;
+  txt->p[y].p = realloc(txt->p[y].p, txt->p[y].len + 1);
   strcat(txt->p[y].p, ntxt.p[0].p);
   free(ntxt.p[0].p);
 
@@ -136,9 +161,11 @@ void test_insert(void) {
 
   struct delete_cmd out_cmd = text_insert(t, cmd); 
 
-  //for(int i=0; i<t->len; i++) printf("%s\n", t->p[i].p);
+  assert(expected->len == t->len);
   for(int i=0; i<t->len; i++){
     assert(!strcmp(expected->p[i].p, t->p[i].p));
+    assert(expected->p[i].len == t->p[i].len);
+    assert(expected->p[i].cap == t->p[i].cap);
   }
 
   assert(out_cmd.y == expected_cmd.y);
@@ -149,9 +176,11 @@ void test_insert(void) {
   // undo test
   text_delete(t, out_cmd);
 
-  //for(int i=0; i<t->len; i++) printf("%s\n", t->p[i].p);
-  for(int i=0; i<t->len; i++)
+  assert(original_t->len == t->len);
+  for(int i=0; i<t->len; i++){
     assert(!strcmp(original_t->p[i].p, t->p[i].p));
+    assert(original_t->p[i].len == t->p[i].len);
+  }
 }
 
 int main(void) {
