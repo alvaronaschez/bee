@@ -96,9 +96,9 @@ struct insert_cmd text_delete(struct text *txt, struct delete_cmd cmd) {
 }
 
 void test_insert(void) {
-  struct text *t = text_from((char *[]){"hola", "que", "tal"}, 3);
+  struct text *t = text_from((char *[]){"Hola", "que", "tal"}, 3);
   struct text *n = text_from((char *[]){"hoho", "I am Santa!", ""}, 3);
-  struct text *expected = text_from((char *[]){"hohoho", "I am Santa!", "la", "que", "tal"}, 5);
+  struct text *expected = text_from((char *[]){"Hohoho", "I am Santa!", "la", "que", "tal"}, 5);
   struct insert_cmd cmd = { .txt = *n, .y = 0, .x = 2 };
   struct delete_cmd expected_cmd = {.x=2, .y=0, .xx=11, .yy=1};
   struct delete_cmd out_cmd = text_insert(t, cmd); 
