@@ -130,7 +130,7 @@ struct insert_cmd text_delete(struct text *txt, struct delete_cmd cmd) {
 
   int x = cmd.x; int y = cmd.y; int xx = cmd.xx; int yy = cmd.yy;
 
-  if(x == txt->p[y].len){} // ¿? TODO
+  if(x == txt->p[y].len){} // TODO: is there anything to do here
   if(xx == txt->p[yy].len){
     yy++;
     xx=-1;
