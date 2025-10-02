@@ -1,6 +1,7 @@
 bee
+obj/*
+!obj/.gitkeep
+out/*
+!out/.gitkeep
 Makefile
-testfile
-testfile2
-t
 bee.log
