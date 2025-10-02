@@ -102,7 +102,6 @@ struct delete_cmd text_insert(struct text *txt, struct insert_cmd cmd) {
   txt->p[y].len = txt->p[y].cap = x + ntxt.p[0].len;
   txt->p[y].p = realloc(txt->p[y].p, txt->p[y].len + 1);
   strcat(txt->p[y].p, ntxt.p[0].p);
-  free(ntxt.p[0].p);
 
   // copy rest of lines
   if(ntxt.len > 1){
@@ -113,15 +112,16 @@ struct delete_cmd text_insert(struct text *txt, struct insert_cmd cmd) {
     memcpy(&txt->p[y+1], &ntxt.p[1], (ntxt.len -1)*sizeof(struct string));
     txt->len += ntxt.len -1;
   }
-  free(ntxt.p);
 
   // append the line we backed up before
   txt->p[yy].len = txt->p[yy].cap = txt->p[yy].len + aux_len;
   txt->p[yy].p = realloc(txt->p[yy].p, txt->p[yy].len +1);
   strcat(txt->p[yy].p, aux);
-  free(aux);
 
   struct delete_cmd retval = insert_cmd_inverse(txt, &cmd);
+  free(ntxt.p[0].p);
+  free(ntxt.p);
+  free(aux);
   return retval;
 }
 
@@ -202,7 +202,7 @@ void test_1(void) {
   assert_text_equals(original_t, t);
   assert_insert_cmd_equals(&out_cmd2, &cmd);
 }
-void test_2(void){
+void test_del1(void){
   struct text *o = text_from((char *[]){"foo", "bar", "jam"}, 3);
   struct text *t = text_from((char *[]){"foo", "bar", "jam"}, 3);
   struct text *expected = text_from((char *[]){"foo", "br", "jam"}, 3);
@@ -213,7 +213,7 @@ void test_2(void){
   text_insert(t, ins_cmd);
   assert_text_equals(t, o);
 }
-void test_3(void){
+void test_del2(void){
   struct text *o = text_from((char *[]){"foo", "bar", "jam"}, 3);
   struct text *t = text_from((char *[]){"foo", "bar", "jam"}, 3);
   struct text *expected = text_from((char *[]){"foo", "barjam"}, 2);
@@ -225,7 +225,7 @@ void test_3(void){
   text_insert(t, ins_cmd);
   assert_text_equals(t, o);
 }
-void test_4(void){
+void test_ins1(void){
   struct text *o = text_from((char *[]){"foo", "bar", "jam"}, 3);
   struct text *t = text_from((char *[]){"foo", "bar", "jam"}, 3);
   struct text *expected = text_from((char *[]){"foo", "baar", "jam"}, 3);
@@ -233,16 +233,16 @@ void test_4(void){
   struct insert_cmd ins_cmd = {.y=1, .x=2, .txt=*ins_txt};
   struct delete_cmd del_cmd = text_insert(t, ins_cmd);
   assert_text_equals(t, expected);
-  // test undo
-  // TODO: make it pass
-  //text_delete(t, del_cmd); 
-  //assert_text_equals(t, o);
+
+    // test undo
+  text_delete(t, del_cmd); 
+  assert_text_equals(t, o);
 }
 int main(void) {
   test_1();
-  test_2();
-  test_3();
-  test_4();
+  test_del1();
+  test_del2();
+  test_ins1();
 
   return 0;
 }
