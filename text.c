@@ -3,6 +3,9 @@
 #include <assert.h>
 #include <stdio.h>
 
+#define MAX(a,b) ((a)>(b)?(a):(b))
+#define MIN(a,b) ((a)<(b)?(a):(b))
+
 struct string {
   char *p;
   int len, cap;
@@ -41,7 +44,7 @@ struct insert_cmd delete_cmd_inverse(const struct text *txt, const struct delete
   ret.x = x; ret.y = y;
 
   // copy all lines involved
-  int extra_line = xx == txt->p[yy].len ? 1:0; 
+  int extra_line = xx == txt->p[yy].len && yy<txt->len-1 ? 1:0; 
   int len = ret.txt.len =  yy - y + 1 + extra_line;
   ret.txt.p = malloc(len*sizeof(struct string));
   for(int i=0; i<len-extra_line; i++){
@@ -65,9 +68,11 @@ struct insert_cmd delete_cmd_inverse(const struct text *txt, const struct delete
   free(aux);
   // last line
   if(!extra_line){
-    ret.txt.p[len-1].p = realloc(ret.txt.p[len-1].p, xx+1);
-    ret.txt.p[len-1].p[xx] = '\0';
-    ret.txt.p[len-1].len = xx;
+    if(y==yy) xx -= x;
+    int xxx = MIN(xx+1, ret.txt.p[len-1].len);
+    ret.txt.p[len-1].p = realloc(ret.txt.p[len-1].p, xxx+1);
+    ret.txt.p[len-1].p[xxx] = '\0';
+    ret.txt.p[len-1].len = xxx;
     ret.txt.p[len-1].cap = ret.txt.p[len-1].len;
   }
 
@@ -156,6 +161,13 @@ struct insert_cmd text_delete(struct text *txt, struct delete_cmd cmd) {
     }
     txt->len -=lines_to_delete;
     txt->p = realloc(txt->p, txt->len*sizeof(struct string));
+  }
+
+  if(txt->len==0){
+    txt->len=1;
+    txt->p = malloc(sizeof(struct string));
+    txt->p[0].p = calloc(1,1);
+    txt->p[0].len = txt->p[0].cap = 0;
   }
 
   return retval;
@@ -249,6 +261,30 @@ void test_del4(void){
   text_insert(t, ins_cmd);
   assert_text_equals(t, o);
 }
+void test_del5(void){
+  struct text *o = text_from((char *[]){"one", "two", "three"}, 3);
+  struct text *t = text_from((char *[]){"one", "two", "three"}, 3);
+  struct text *expected = text_from((char *[]){""}, 1);
+  struct delete_cmd del_cmd = {.y=0, .x=0, .yy=2, .xx=5};
+  struct insert_cmd ins_cmd = text_delete(t, del_cmd);
+  assert_text_equals(t, expected);
+
+  // test undo
+  text_insert(t, ins_cmd);
+  assert_text_equals(t, o);
+}
+void test_del6(void){
+  struct text *o = text_from((char *[]){""}, 1);
+  struct text *t = text_from((char *[]){""}, 1);
+  struct text *expected = text_from((char *[]){""}, 1);
+  struct delete_cmd del_cmd = {.y=0, .x=0, .yy=0, .xx=0};
+  struct insert_cmd ins_cmd = text_delete(t, del_cmd);
+  assert_text_equals(t, expected);
+
+  // test undo
+  text_insert(t, ins_cmd);
+  assert_text_equals(t, o);
+}
 
 void test_ins1(void){
   struct text *o = text_from((char *[]){"foo", "bar", "jam"}, 3);
@@ -268,6 +304,9 @@ int main(void) {
   test_del1();
   test_del2();
   test_del3();
+  test_del4();
+  test_del5();
+  test_del6();
   test_ins1();
 
   return 0;
