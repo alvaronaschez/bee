@@ -237,6 +237,19 @@ void test_del3(void){
   text_insert(t, ins_cmd);
   assert_text_equals(t, o);
 }
+void test_del4(void){
+  struct text *o = text_from((char *[]){"one", "two", "three"}, 3);
+  struct text *t = text_from((char *[]){"one", "two", "three"}, 3);
+  struct text *expected = text_from((char *[]){""}, 1);
+  struct delete_cmd del_cmd = {.y=0, .x=0, .yy=2, .xx=4};
+  struct insert_cmd ins_cmd = text_delete(t, del_cmd);
+  assert_text_equals(t, expected);
+
+  // test undo
+  text_insert(t, ins_cmd);
+  assert_text_equals(t, o);
+}
+
 void test_ins1(void){
   struct text *o = text_from((char *[]){"foo", "bar", "jam"}, 3);
   struct text *t = text_from((char *[]){"foo", "bar", "jam"}, 3);
