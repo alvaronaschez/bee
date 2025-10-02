@@ -315,9 +315,9 @@ void test_ins2(void){
 void test_ins3(void){
   struct text *o = text_from((char *[]){"foo", "bar", "jam"}, 3);
   struct text *t = text_from((char *[]){"foo", "bar", "jam"}, 3);
-  struct text *expected = text_from((char *[]){"foo", "baar", "jam"}, 3);
-  struct text *ins_txt = text_from((char*[]){"a"}, 1);
-  struct insert_cmd ins_cmd = {.y=1, .x=2, .txt=*ins_txt};
+  struct text *expected = text_from((char *[]){"foo", "barcar", "jam"}, 3);
+  struct text *ins_txt = text_from((char*[]){"car"}, 1);
+  struct insert_cmd ins_cmd = {.y=1, .x=3, .txt=*ins_txt};
   struct delete_cmd del_cmd = text_insert(t, ins_cmd);
   assert_text_equals(t, expected);
 
@@ -335,6 +335,7 @@ int main(void) {
   test_del6();
   test_ins1();
   test_ins2();
+  test_ins3();
 
   return 0;
 }
