@@ -295,7 +295,7 @@ void test_ins1(void){
   struct delete_cmd del_cmd = text_insert(t, ins_cmd);
   assert_text_equals(t, expected);
 
-    // test undo
+  // test undo
   text_delete(t, del_cmd); 
   assert_text_equals(t, o);
 }
@@ -308,7 +308,7 @@ void test_ins2(void){
   struct delete_cmd del_cmd = text_insert(t, ins_cmd);
   assert_text_equals(t, expected);
 
-    // test undo
+  // test undo
   text_delete(t, del_cmd); 
   assert_text_equals(t, o);
 }
@@ -321,21 +321,37 @@ void test_ins3(void){
   struct delete_cmd del_cmd = text_insert(t, ins_cmd);
   assert_text_equals(t, expected);
 
-    // test undo
+  // test undo
+  text_delete(t, del_cmd); 
+  assert_text_equals(t, o);
+}
+void test_ins4(void){
+  struct text *o = text_from((char *[]){"foo", "bar", "jam"}, 3);
+  struct text *t = text_from((char *[]){"foo", "bar", "jam"}, 3);
+  struct text *expected = text_from((char *[]){"foo", "bar", "bla", "bla", "jam"}, 5);
+  struct text *ins_txt = text_from((char*[]){"", "bla", "bla"}, 3);
+  struct insert_cmd ins_cmd = {.y=1, .x=3, .txt=*ins_txt};
+  struct delete_cmd del_cmd = text_insert(t, ins_cmd);
+  assert_text_equals(t, expected);
+
+  // test undo
   text_delete(t, del_cmd); 
   assert_text_equals(t, o);
 }
 int main(void) {
   test_1();
+
   test_del1();
   test_del2();
   test_del3();
   test_del4();
   test_del5();
   test_del6();
+
   test_ins1();
   test_ins2();
   test_ins3();
+  test_ins4();
 
   return 0;
 }
