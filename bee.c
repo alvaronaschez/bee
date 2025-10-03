@@ -44,28 +44,29 @@ char *mode_label[] = {"N", "I", "C"};
 //  int len, cap; // length and capacity
 //};
 
-struct delete_command{
-  int x, y, xx, yy;
-};
-struct insert_command{
-  int x, y, len;
-  struct string *txt;
-};
+//struct delete_command{
+//  int x, y, xx, yy;
+//};
+//struct insert_command{
+//  int x, y, len;
+//  struct string *txt;
+//};
 enum operation { INS, DEL};
 struct change_stack{
-  enum operation op;
   int y, bx, vx, leftcol, toprow;
   struct change_stack *next;
+  enum operation op;
   union {
-    struct insert_command i;
-    struct delete_command d;
+    struct insert_cmd i;
+    struct delete_cmd d;
   } cmd;
 };
 
 struct bee {
   enum mode mode;
-  struct string *buf;
-  int buf_len;
+  //struct text *buf;
+  // TODO:
+  struct text buf;
   char *filename;
 
   int toprow, leftcol;
@@ -104,7 +105,7 @@ void string_append(struct string *s, const char *t){
  * @warning Takes ownership of `str`.
  * The caller must not use or free `str` after this call.
  */
-struct string * string_split_lines(struct string *str, int nlines){
+struct string *string_split_lines(struct string *str, int nlines){
   char *s = str->p;
   struct string *inserted_lines = malloc(nlines*sizeof(struct string));
 
@@ -120,6 +121,24 @@ struct string * string_split_lines(struct string *str, int nlines){
   string_destroy(str);
 
   return inserted_lines;
+}
+
+struct text text_from_string(struct string *str, int nlines){
+  struct text retval;
+  char *s = str->p;
+  retval.p = malloc(nlines*sizeof(struct string));
+
+  for(int i=0; i<nlines; i++){
+    char *end = strchrnul(s, '\n');
+    retval.p[i].p = malloc(end-s+1);
+    memcpy(retval.p[i].p, s, end-s);
+    retval.p[i].p[end-s] = '\0'; // null terminated string
+    retval.p[i].cap = retval.p[i].len = end-s;
+    s = end+1;
+  }
+
+  string_destroy(str);
+  return retval;
 }
 
 #define bytelen utf8len
@@ -175,157 +194,14 @@ static inline int utf8prev(const char* s, int off){
   return off;
 }
 
-/**
- * @warning Takes ownership of `s`.
- * The caller must not use or free `s` after this call.
- */
-static inline struct change_stack *bee_insert(struct bee *bee, int x, int y, struct string *s, int nlines){
-  assert(nlines > 0);
-
-/* BEGIN save to undo stack */
-  struct change_stack *ch = malloc(sizeof(struct change_stack));
-  // TODO: review these two lines and the whole thing of bee->ins_toprow...
-  // are we using insert in places where these will break?
-  // should we manage this outside this function?
-  ch->y = bee->ins_y; ch->bx = bee->ins_bx; ch->vx = bee->ins_vx;
-  ch->toprow = bee->ins_toprow; ch->leftcol = bee->ins_leftcol;
-  ch->op = DEL;
-  ch->cmd.d = (struct delete_command){
-    .x = x, .y = y,
-    .xx = s[nlines-1].len -1 + (nlines>1 ? 0 : x),
-    .yy = y+nlines -1
-  };
-  //ch->next = bee->undo_stack;
-  //bee->undo_stack = ch;
-/* END save to undo stack */
-
-  // append end of insertion line to end of s
-  s[nlines-1].p = realloc(
-      s[nlines-1].p,
-      s[nlines-1].len 
-      + bee->buf[y].len - x
-      + 1); 
-  strcat(s[nlines-1].p,
-     bee->buf[y].p + x);
-  s[nlines-1].len += bee->buf[y].len - x;
-  s[nlines-1].cap = s[nlines-1].len;
-
-  // insert first line
-  bee->buf[y].p[x] = '\0';
-  bee->buf[y].p = realloc(bee->buf[y].p,
-      x + s[0].len +1);
-  strcat(bee->buf[y].p, s[0].p);
-  bee->buf[y].len = x + s[0].len;
-  bee->buf[y].cap += s[0].len;
-  free(s[0].p);
-
-  if(nlines > 1){
-    // make room for the insertion
-    bee->buf = realloc(bee->buf, sizeof(struct string)*(bee->buf_len+nlines-1));
-    memmove(
-	&bee->buf[y+nlines],
-	&bee->buf[y+1],
-	(bee->buf_len - y -1) * sizeof(struct string));
-
-    for(int i=1; i<nlines; i++){
-      bee->buf[y+i] = s[i];
-    }
-
-    bee->buf_len += nlines-1;
-  }
-  return ch;
-}
-
-static inline struct change_stack *bee_delete(struct bee *bee, int x, int y, int xx, int yy){
-  // TODO: properly prevent cases where we delete the whole buffer
-  // we always have to preserve at least one empty line
-  if(bee->buf_len == 1 && x == 0 && xx == 0 && y == 0 && yy == 0 && bee->buf[0].len==0)
-    return NULL;
-
-/* BEGIN save to undo stack */
-  struct change_stack *ch = malloc(sizeof(struct change_stack));
-  ch->y = bee->y; ch->bx = bee->bx; ch->vx = bee->vx;
-  ch->toprow = bee->toprow; ch->leftcol = bee->leftcol;
-  ch->op = INS;
-  ch->cmd.i = (struct insert_command){
-    .x = x, .y = y, .txt = NULL, .len = yy - y +1
-  };
-  struct insert_command *icmd = &ch->cmd.i;
-  int extra_line = xx == bee->buf[yy].len ? 1 : 0; // we want to delete the linebreak // TODO: it's not that easy
-  icmd->len += extra_line;
-  icmd->txt = malloc(sizeof(struct string)*icmd->len);
-  if(icmd->len == 1 + extra_line){
-    icmd->txt[0].len = icmd->txt[0].cap = xx - x + 1;
-    icmd->txt[0].p = malloc(icmd->txt[0].len + 1);
-    memcpy(icmd->txt[0].p, &bee->buf[y].p[x], xx - x + 1);
-    icmd->txt[0].p[icmd->txt[0].len] = '\0';
-    if(extra_line)
-      string_init(&icmd->txt[icmd->len-1]);
-  } else {
-    // copy first part
-    icmd->txt[0].len = icmd->txt[0].cap = bee->buf[y].len - x + 1;
-    icmd->txt[0].p = malloc(icmd->txt[0].len + 1);
-    strcpy(icmd->txt[0].p, &bee->buf[y].p[x]);
-    // copy middle part
-    for(int i=1; i<icmd->len-1-extra_line; i++){
-      // we can try to avoid copying
-      // icmd->txt[i] = bee->buf[y+i];
-      icmd->txt[i].cap = icmd->txt[i].len = bee->buf[y+i].len;
-      icmd->txt[i].p = malloc(icmd->txt[i].len + 1);
-      strcpy(icmd->txt[i].p, bee->buf[y+i].p);
-    }
-    if(extra_line)
-      string_init(&icmd->txt[icmd->len-1]);
-    // copy last part
-    icmd->txt[icmd->len-1].len = icmd->txt[icmd->len-1].cap = bee->buf[yy].len - xx;
-    icmd->txt[icmd->len-1].p = malloc(icmd->txt[icmd->len-1].len + 1);
-    memcpy(icmd->txt[icmd->len-1].p, bee->buf[yy].p, xx);
-    icmd->txt[icmd->len-1].p[icmd->txt[icmd->len-1].len] = '\0';
-  }
-  //ch->next = bee->undo_stack;
-  //bee->undo_stack = ch;
-/* END save to undo stack */
-
-  assert(x<=xx && y<=yy);
-  if(xx == bee->buf[yy].len){
-    /* we want to delete the last linebreak, so we join the whole next line to 
-    * the end of the last line and we delete one more line */
-    yy++; // WARNING: what if now `yy == buf_len`
-    xx=-1;
-  }
-
-  int len = x + (bee->buf[yy].len - 1 - xx);
-  bee->buf[y].p = realloc(bee->buf[y].p, len +1);
-  bee->buf[y].len = bee->buf[y].cap = len;
-  bee->buf[y].p[x]='\0';
-  if(yy < bee->buf_len)
-    strcat(&bee->buf[y].p[x], &bee->buf[yy].p[xx+1]);
-
-  int lines_to_delete = yy - y;
-  if(lines_to_delete > 0){
-    // we need to keep these for the undo/redo stack
-    //for(int i=0; i<lines_to_delete; i++)
-    //  if(y+1+i < bee->buf_len)
-    //    string_destroy(&bee->buf[y+1+i]);
-    if(yy+1 < bee->buf_len)
-      memmove(
-        &bee->buf[y+1],
-        &bee->buf[yy+1],
-        (bee->buf_len-yy)*sizeof(struct string));
-
-    bee->buf_len -= lines_to_delete;
-  }
-  return ch;
-}
-
 void change_stack_destroy(struct change_stack *cs){
   struct change_stack *aux;
   while(cs){
     aux = cs->next;
     if(cs->op == INS){
-      for(int i=0; i<cs->cmd.i.len; i++)
-	free(cs->cmd.i.txt[i].p);
-      free(cs->cmd.i.txt);
+      for(int i=0; i<cs->cmd.i.txt.len; i++)
+	free(cs->cmd.i.txt.p[i].p);
+      free(cs->cmd.i.txt.p);
     }
     free(cs);
     cs = aux;
@@ -333,7 +209,7 @@ void change_stack_destroy(struct change_stack *cs){
 }
 
 
-static inline struct string *load_file(const char *filename, int *len){
+static inline struct string *_load_file(const char *filename, int *len){
   if (filename == NULL) return 0;
   FILE *fp = fopen(filename, "r");
   assert(fp);
@@ -370,6 +246,13 @@ static inline struct string *load_file(const char *filename, int *len){
   free(fcontent);
   // calle should free buf
   return buf;
+}
+static inline struct text load_file(const char *filename){
+  int len;
+  struct text retval;
+  retval.p = _load_file(filename, &len);
+  retval.len = len;
+  return retval;
 }
 
 // TODO
@@ -419,7 +302,7 @@ static inline void print_footer(const struct bee *bee){
 
   char *mode = mode_label[bee->mode];
   int buf_len = bee->mode == INSERT ?
-    bee->buf_len + bee->y - bee->ins_y : bee->buf_len;
+    bee->buf.len + bee->y - bee->ins_y : bee->buf.len;
   tb_printf(0, tb_height() - 1, fg, bg, footer_format,
             mode, bee->filename, buf_len, bee->y, bee->vx);
 }
@@ -445,37 +328,37 @@ static inline void print_screen(const struct bee *bee){
   char *s;
   if(bee->mode == INSERT){
     // before insert buffer
-    for(int j=0; bee->toprow+j<bee->buf_len && bee->toprow+j<bee->ins_y; j++){
-      s = skip_n_col(bee->buf[bee->toprow+j].p, bee->leftcol, &remainder);
+    for(int j=0; bee->toprow+j<bee->buf.len && bee->toprow+j<bee->ins_y; j++){
+      s = skip_n_col(bee->buf.p[bee->toprow+j].p, bee->leftcol, &remainder);
       println(remainder, j, s, screen_width);
     }
 
     // insert buffer
-    s = skip_n_col(bee->buf[bee->ins_y].p, bee->leftcol, &remainder);
-    println(remainder, bee->ins_y-bee->toprow, bee->buf[bee->ins_y].p, bee->ins_vx);
+    s = skip_n_col(bee->buf.p[bee->ins_y].p, bee->leftcol, &remainder);
+    println(remainder, bee->ins_y-bee->toprow, bee->buf.p[bee->ins_y].p, bee->ins_vx);
     int xx = bee->ins_vx - bee->leftcol; // relative to the screen
     int yy = bee->ins_y - bee->toprow; // relative to the screen
     print_insert_buffer(bee, &xx, &yy);
-    println(xx, yy, bee->buf[bee->ins_y].p + bee->ins_bx, screen_width);
+    println(xx, yy, bee->buf.p[bee->ins_y].p + bee->ins_bx, screen_width);
     tb_set_cursor(xx, yy);
 
     // after insert buffer
     //int num_lines_inserted = bee->y - bee->ins_y;
-    //for(int j = yy+1; j<screen_height && bee->toprow+j < bee->buf_len; j++){
+    //for(int j = yy+1; j<screen_height && bee->toprow+j < bee->buf.len; j++){
     //  s = skip_n_col(
-    //      bee->buf[bee->toprow+j-num_lines_inserted].p, bee->leftcol, &remainder);
+    //      bee->buf.p[bee->toprow+j-num_lines_inserted].p, bee->leftcol, &remainder);
     //  println(remainder, j, s, screen_width);
     //}
-    for(int j=0; j+yy+1<screen_height && bee->ins_y+j < bee->buf_len; j++){
+    for(int j=0; j+yy+1<screen_height && bee->ins_y+j < bee->buf.len; j++){
       s = skip_n_col(
-	  bee->buf[bee->ins_y+j+1].p, bee->leftcol, &remainder);
+	  bee->buf.p[bee->ins_y+j+1].p, bee->leftcol, &remainder);
       println(remainder, yy+1+j, s, screen_width);
     }
   }
   else { // mode != INSERT
-    for(int j=0; j < screen_height && j+bee->toprow < bee->buf_len; j++){
-      s = skip_n_col(bee->buf[bee->toprow+j].p, bee->leftcol, &remainder);
-      //s = bee->buf[bee->toprow+j].p; remainder = 0;
+    for(int j=0; j < screen_height && j+bee->toprow < bee->buf.len; j++){
+      s = skip_n_col(bee->buf.p[bee->toprow+j].p, bee->leftcol, &remainder);
+      //s = bee->buf.p[bee->toprow+j].p; remainder = 0;
       if(s)
       println(remainder, j, s, screen_width);
     }
@@ -504,12 +387,12 @@ static inline void print_screen(const struct bee *bee){
 
 static inline void autoscroll_x(struct bee *bee){
   // cursor too far to the right
-  if(bee->vx + columnlen(&bee->buf[YY].p[XX], bee->vx) > screen_width + bee->leftcol){
+  if(bee->vx + columnlen(&bee->buf.p[YY].p[XX], bee->vx) > screen_width + bee->leftcol){
     int bx_leftcol, vx_leftcol;
-    vx_to_bx(bee->buf[bee->y].p, bee->leftcol, &bx_leftcol, &vx_leftcol);
-    while(bee->vx + columnlen(&bee->buf[YY].p[XX], bee->vx) > screen_width + bee->leftcol){
-      bee->leftcol += columnlen(bee->buf[bee->y].p + bx_leftcol, bee->leftcol);
-      bx_leftcol += bytelen(bee->buf[bee->y].p + bx_leftcol);
+    vx_to_bx(bee->buf.p[bee->y].p, bee->leftcol, &bx_leftcol, &vx_leftcol);
+    while(bee->vx + columnlen(&bee->buf.p[YY].p[XX], bee->vx) > screen_width + bee->leftcol){
+      bee->leftcol += columnlen(bee->buf.p[bee->y].p + bx_leftcol, bee->leftcol);
+      bx_leftcol += bytelen(bee->buf.p[bee->y].p + bx_leftcol);
     }
   }
   // cursor too far to the left
@@ -533,24 +416,24 @@ static inline void autoscroll(struct bee *bee){
 
 static inline void n_h(struct bee *bee){
   if(bee->bx > 0){
-    //vx_to_bx(bee->buf[YY].p, bee->vx-1, &bee->bx, &bee->vx);
+    //vx_to_bx(bee->buf.p[YY].p, bee->vx-1, &bee->bx, &bee->vx);
     // that would be enough, the following is an optimization
-    if ( *(&bee->buf[YY].p[XX]-1) == '\t' ) {
-      vx_to_bx(bee->buf[YY].p, bee->vx-1, &bee->bx, &bee->vx);
+    if ( *(&bee->buf.p[YY].p[XX]-1) == '\t' ) {
+      vx_to_bx(bee->buf.p[YY].p, bee->vx-1, &bee->bx, &bee->vx);
     } else {
-      bee->bx = utf8prev(bee->buf[YY].p, bee->bx);
-      bee->vx -= columnlen(&bee->buf[YY].p[XX], bee->vx);
+      bee->bx = utf8prev(bee->buf.p[YY].p, bee->bx);
+      bee->vx -= columnlen(&bee->buf.p[YY].p[XX], bee->vx);
     }
     autoscroll_x(bee);
   }
   bee->vxgoal = bee->vx;
 }
 static inline void n_l(struct bee *bee){
-  //if(bee->bx + bytelen(&bee->buf[YY].p[XX]) < bee->buf[YY].len){
+  //if(bee->bx + bytelen(&bee->buf.p[YY].p[XX]) < bee->buf.p[YY].len){
   // allow go till the linebreak character
-  if(bee->bx + bytelen(&bee->buf[YY].p[XX]) <= bee->buf[YY].len){
-    bee->vx += columnlen(&bee->buf[YY].p[XX], bee->vx);
-    bee->bx += bytelen(&bee->buf[YY].p[XX]);
+  if(bee->bx + bytelen(&bee->buf.p[YY].p[XX]) <= bee->buf.p[YY].len){
+    bee->vx += columnlen(&bee->buf.p[YY].p[XX], bee->vx);
+    bee->bx += bytelen(&bee->buf.p[YY].p[XX]);
     autoscroll_x(bee);
   }
   bee->vxgoal = bee->vx;
@@ -558,20 +441,20 @@ static inline void n_l(struct bee *bee){
 
 static inline void n_l_pastend(struct bee *bee){
   // you can go past the end of the line so you can append at the end of the line
-  if(bee->bx + bytelen(&bee->buf[YY].p[XX]) <= bee->buf[YY].len){
-    bee->vx += columnlen(&bee->buf[YY].p[XX], bee->vx);
-    bee->bx += bytelen(&bee->buf[YY].p[XX]);
+  if(bee->bx + bytelen(&bee->buf.p[YY].p[XX]) <= bee->buf.p[YY].len){
+    bee->vx += columnlen(&bee->buf.p[YY].p[XX], bee->vx);
+    bee->bx += bytelen(&bee->buf.p[YY].p[XX]);
     autoscroll_x(bee);
   }
   bee->vxgoal = bee->vx;
 }
 
 static inline void n_j(struct bee *bee){
-  if(bee->y +1 == bee->buf_len) return;
+  if(bee->y +1 == bee->buf.len) return;
   bee->y++;
 
   // adjust column position
-  vx_to_bx(bee->buf[YY].p, bee->vxgoal, &bee->bx, &bee->vx);
+  vx_to_bx(bee->buf.p[YY].p, bee->vxgoal, &bee->bx, &bee->vx);
 
   autoscroll(bee);
 }
@@ -580,7 +463,7 @@ static inline void n_k(struct bee *bee){
   bee->y--;
 
   // adjust column position
-  vx_to_bx(bee->buf[YY].p, bee->vxgoal, &bee->bx, &bee->vx);
+  vx_to_bx(bee->buf.p[YY].p, bee->vxgoal, &bee->bx, &bee->vx);
 
   autoscroll(bee);
 }
@@ -590,12 +473,20 @@ static inline void n_x(struct bee *bee){
   bee->redo_stack = NULL;
   struct change_stack *old_undo_stack = bee->undo_stack;
 
-  bee->undo_stack = bee_delete(bee, bee->bx, bee->y, bee->bx, bee->y);
+  struct change_stack *change = malloc(sizeof(struct change_stack));
+  *change = (struct change_stack){
+    .y = bee->y, .bx = bee->bx, .vx = bee->vx,
+    .leftcol=bee->leftcol, .toprow=bee->toprow,
+    .op = INS,
+  };
+  change->cmd.i = text_delete(&bee->buf,
+      (struct delete_cmd){.x=bee->bx, .y=bee->y, .xx=bee->bx, .yy=bee->y});
+  bee->undo_stack = change;
   bee->undo_stack->next = old_undo_stack;
 
-  if(bee->bx != 0 && bee->bx == bee->buf[bee->y].len)
+  if(bee->bx != 0 && bee->bx == bee->buf.p[bee->y].len)
     n_h(bee);
-  if(bee->y == bee->buf_len){
+  if(bee->y == bee->buf.len){
     n_k(bee);
   }
 }
@@ -624,30 +515,28 @@ static inline void bee_restore_cursor(struct bee *bee, const struct change_stack
   bee->toprow = ch->toprow; bee->leftcol = ch->leftcol;
 }
 
-static inline struct change_stack *apply_cmd_ins(struct bee *bee, struct insert_command c){
-  return bee_insert(bee, c.x, c.y, c.txt, c.len);
-}
-static inline struct change_stack *apply_cmd_del(struct bee *bee, struct delete_command c){
-  return bee_delete(bee, c.x, c.y, c.xx, c.yy);
-}
-
-
-
 /*
  * @brief returns the change needed to revert the applied change
  */
 static inline struct change_stack *apply_change(struct bee *bee, struct change_stack *ch){
-  struct change_stack *result;
+  struct change_stack *retval = malloc(sizeof(struct change_stack));
+  *retval = (struct change_stack){
+    .y = bee->y, .bx = bee->bx, .vx = bee->vx,
+    .leftcol=bee->leftcol, .toprow=bee->toprow,
+  };
+ 
   switch(ch->op){
     case INS:
-      result = apply_cmd_ins(bee, ch->cmd.i);
+      retval->op = DEL;
+      retval->cmd.d = text_insert(&bee->buf, ch->cmd.i);
       break;
     case DEL:
-      result = apply_cmd_del(bee, ch->cmd.d);
+      retval->op = INS;
+      retval->cmd.i = text_delete(&bee->buf, ch->cmd.d);
       break;
   }
   bee_restore_cursor(bee, ch);
-  return result;
+  return retval;
 }
 
 #define n_u(bee) bee_undo(bee)
@@ -729,8 +618,17 @@ static inline void i_esc(struct bee *bee){
 
   int num_lines_inserted = bee->y - bee->ins_y;
   int num_lines_ins_buf = num_lines_inserted +1;
-  struct string *inserted_lines = string_split_lines(&bee->ins_buf, num_lines_ins_buf);
-  bee->undo_stack = bee_insert(bee, bee->ins_bx, bee->ins_y, inserted_lines, num_lines_ins_buf);
+  struct text inserted_lines = text_from_string(&bee->ins_buf, num_lines_ins_buf);
+
+  struct change_stack *change = malloc(sizeof(struct change_stack));
+  *change = (struct change_stack){
+    .y = bee->y, .bx = bee->bx, .vx = bee->vx,
+    .leftcol=bee->leftcol, .toprow=bee->toprow,
+    .op = DEL,
+  };
+  change->cmd.d = text_insert(&bee->buf, 
+      (struct insert_cmd){.x=bee->ins_bx, .y=bee->ins_y, .txt=inserted_lines});
+  bee->undo_stack = change;
   bee->undo_stack->next = old_undo_stack;
 
   bee->vxgoal = bee->vx;
@@ -791,8 +689,7 @@ static inline char read_key(struct bee *bee){
 static inline void bee_init(struct bee *bee){
   bee->mode = NORMAL;
   bee->filename = NULL;
-  bee->buf = NULL;
-  bee->buf_len = 0;
+  bee->buf.len = 0;
   bee->y = 0;
   bee->leftcol = bee->toprow = 0;
   bee->bx = bee->vx = bee->vxgoal = 0;
@@ -801,9 +698,9 @@ static inline void bee_init(struct bee *bee){
 }
 
 static inline void bee_destroy(struct bee *bee){
-  for(int i=0; i<bee->buf_len; i++)
-    string_destroy(&bee->buf[i]);
-  free(bee->buf);
+  for(int i=0; i<bee->buf.len; i++)
+    string_destroy(&bee->buf.p[i]);
+  free(bee->buf.p);
   if(bee->filename)
     free(bee->filename);
   change_stack_destroy(bee->undo_stack);
@@ -829,7 +726,7 @@ int main(int argc, char **argv){
     return 1;
   }
 
-  bee.buf = load_file(bee.filename, &bee.buf_len);
+  bee.buf = load_file(bee.filename);
 
   tb_init();
   tb_set_clear_attrs(fg_color, bg_color);
