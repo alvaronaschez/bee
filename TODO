@@ -1,9 +1,9 @@
-- undo/redo (wip)
 - save to file
+- undo/redo (wip - almost done, review cursor/scroll position after undo/redo)
+- tests (wip)
 - resize
 - yank/paste
 - visual mode
-- tests
 
 ## minimal features:
   h j k l
