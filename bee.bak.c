@@ -1,4 +1,3 @@
-#include "text.h"
 #define TB_IMPL
 #include "termbox2.h"
 
@@ -39,10 +38,10 @@ enum mode {
 
 char *mode_label[] = {"N", "I", "C"};
 
-//struct string {
-//  char *chars; // null terminated
-//  int len, cap; // length and capacity
-//};
+struct string {
+  char *chars; // null terminated
+  int len, cap; // length and capacity
+};
 
 struct delete_command{
   int x, y, xx, yy;
@@ -81,20 +80,20 @@ struct bee {
 void string_init(struct string *s){
   s->cap = 64;
   s->len = 0;
-  s->p = calloc(s->cap+1, sizeof(char));
+  s->chars = calloc(s->cap+1, sizeof(char));
 }
 
 void string_destroy(struct string *s){
-  free(s->p);
-  s->p = NULL;
+  free(s->chars);
+  s->chars = NULL;
   s->cap = 0;
   s->len = 0;
 }
 
 void string_append(struct string *s, const char *t){
   if(s->len + (int)strlen(t) > s->cap)
-    s->p = realloc(s->p, s->cap*=2);
-  strcat(s->p + s->len, t);
+    s->chars = realloc(s->chars, s->cap*=2);
+  strcat(s->chars + s->len, t);
   s->len += strlen(t);
 }
 
@@ -105,14 +104,14 @@ void string_append(struct string *s, const char *t){
  * The caller must not use or free `str` after this call.
  */
 struct string * string_split_lines(struct string *str, int nlines){
-  char *s = str->p;
+  char *s = str->chars;
   struct string *inserted_lines = malloc(nlines*sizeof(struct string));
 
   for(int i=0; i<nlines; i++){
     char *end = strchrnul(s, '\n');
-    inserted_lines[i].p = malloc(end-s+1);
-    memcpy(inserted_lines[i].p, s, end-s);
-    inserted_lines[i].p[end-s] = '\0'; // null terminated string
+    inserted_lines[i].chars = malloc(end-s+1);
+    memcpy(inserted_lines[i].chars, s, end-s);
+    inserted_lines[i].chars[end-s] = '\0'; // null terminated string
     inserted_lines[i].cap = inserted_lines[i].len = end-s;
     s = end+1;
   }
@@ -200,24 +199,24 @@ static inline struct change_stack *bee_insert(struct bee *bee, int x, int y, str
 /* END save to undo stack */
 
   // append end of insertion line to end of s
-  s[nlines-1].p = realloc(
-      s[nlines-1].p,
+  s[nlines-1].chars = realloc(
+      s[nlines-1].chars,
       s[nlines-1].len 
       + bee->buf[y].len - x
       + 1); 
-  strcat(s[nlines-1].p,
-     bee->buf[y].p + x);
+  strcat(s[nlines-1].chars,
+     bee->buf[y].chars + x);
   s[nlines-1].len += bee->buf[y].len - x;
   s[nlines-1].cap = s[nlines-1].len;
 
   // insert first line
-  bee->buf[y].p[x] = '\0';
-  bee->buf[y].p = realloc(bee->buf[y].p,
+  bee->buf[y].chars[x] = '\0';
+  bee->buf[y].chars = realloc(bee->buf[y].chars,
       x + s[0].len +1);
-  strcat(bee->buf[y].p, s[0].p);
+  strcat(bee->buf[y].chars, s[0].chars);
   bee->buf[y].len = x + s[0].len;
   bee->buf[y].cap += s[0].len;
-  free(s[0].p);
+  free(s[0].chars);
 
   if(nlines > 1){
     // make room for the insertion
@@ -256,31 +255,31 @@ static inline struct change_stack *bee_delete(struct bee *bee, int x, int y, int
   icmd->txt = malloc(sizeof(struct string)*icmd->len);
   if(icmd->len == 1 + extra_line){
     icmd->txt[0].len = icmd->txt[0].cap = xx - x + 1;
-    icmd->txt[0].p = malloc(icmd->txt[0].len + 1);
-    memcpy(icmd->txt[0].p, &bee->buf[y].p[x], xx - x + 1);
-    icmd->txt[0].p[icmd->txt[0].len] = '\0';
+    icmd->txt[0].chars = malloc(icmd->txt[0].len + 1);
+    memcpy(icmd->txt[0].chars, &bee->buf[y].chars[x], xx - x + 1);
+    icmd->txt[0].chars[icmd->txt[0].len] = '\0';
     if(extra_line)
       string_init(&icmd->txt[icmd->len-1]);
   } else {
     // copy first part
     icmd->txt[0].len = icmd->txt[0].cap = bee->buf[y].len - x + 1;
-    icmd->txt[0].p = malloc(icmd->txt[0].len + 1);
-    strcpy(icmd->txt[0].p, &bee->buf[y].p[x]);
+    icmd->txt[0].chars = malloc(icmd->txt[0].len + 1);
+    strcpy(icmd->txt[0].chars, &bee->buf[y].chars[x]);
     // copy middle part
     for(int i=1; i<icmd->len-1-extra_line; i++){
       // we can try to avoid copying
       // icmd->txt[i] = bee->buf[y+i];
       icmd->txt[i].cap = icmd->txt[i].len = bee->buf[y+i].len;
-      icmd->txt[i].p = malloc(icmd->txt[i].len + 1);
-      strcpy(icmd->txt[i].p, bee->buf[y+i].p);
+      icmd->txt[i].chars = malloc(icmd->txt[i].len + 1);
+      strcpy(icmd->txt[i].chars, bee->buf[y+i].chars);
     }
     if(extra_line)
       string_init(&icmd->txt[icmd->len-1]);
     // copy last part
     icmd->txt[icmd->len-1].len = icmd->txt[icmd->len-1].cap = bee->buf[yy].len - xx;
-    icmd->txt[icmd->len-1].p = malloc(icmd->txt[icmd->len-1].len + 1);
-    memcpy(icmd->txt[icmd->len-1].p, bee->buf[yy].p, xx);
-    icmd->txt[icmd->len-1].p[icmd->txt[icmd->len-1].len] = '\0';
+    icmd->txt[icmd->len-1].chars = malloc(icmd->txt[icmd->len-1].len + 1);
+    memcpy(icmd->txt[icmd->len-1].chars, bee->buf[yy].chars, xx);
+    icmd->txt[icmd->len-1].chars[icmd->txt[icmd->len-1].len] = '\0';
   }
   //ch->next = bee->undo_stack;
   //bee->undo_stack = ch;
@@ -295,11 +294,11 @@ static inline struct change_stack *bee_delete(struct bee *bee, int x, int y, int
   }
 
   int len = x + (bee->buf[yy].len - 1 - xx);
-  bee->buf[y].p = realloc(bee->buf[y].p, len +1);
+  bee->buf[y].chars = realloc(bee->buf[y].chars, len +1);
   bee->buf[y].len = bee->buf[y].cap = len;
-  bee->buf[y].p[x]='\0';
+  bee->buf[y].chars[x]='\0';
   if(yy < bee->buf_len)
-    strcat(&bee->buf[y].p[x], &bee->buf[yy].p[xx+1]);
+    strcat(&bee->buf[y].chars[x], &bee->buf[yy].chars[xx+1]);
 
   int lines_to_delete = yy - y;
   if(lines_to_delete > 0){
@@ -324,7 +323,7 @@ void change_stack_destroy(struct change_stack *cs){
     aux = cs->next;
     if(cs->op == INS){
       for(int i=0; i<cs->cmd.i.len; i++)
-	free(cs->cmd.i.txt[i].p);
+	free(cs->cmd.i.txt[i].chars);
       free(cs->cmd.i.txt);
     }
     free(cs);
@@ -360,9 +359,9 @@ static inline struct string *load_file(const char *filename, int *len){
     // count line length
     for(linelen = 0; j+linelen<fsize-1 && fcontent[j+linelen]!='\n'; linelen++);
     // copy line in buffer
-    buf[i].p = calloc(linelen+1, sizeof(char));
+    buf[i].chars = calloc(linelen+1, sizeof(char));
     if(linelen>0)
-      memcpy(buf[i].p , &fcontent[j], linelen);
+      memcpy(buf[i].chars , &fcontent[j], linelen);
     buf[i].len = buf[i].cap = linelen;
 
     j += linelen+1;
@@ -425,7 +424,7 @@ static inline void print_footer(const struct bee *bee){
 }
 
 static inline void print_insert_buffer(const struct bee *bee, int *x, int *y){
-  char *c = bee->ins_buf.p;
+  char *c = bee->ins_buf.chars;
   while(*c){
     if(*c == '\n'){
       (*y)++;
@@ -446,36 +445,36 @@ static inline void print_screen(const struct bee *bee){
   if(bee->mode == INSERT){
     // before insert buffer
     for(int j=0; bee->toprow+j<bee->buf_len && bee->toprow+j<bee->ins_y; j++){
-      s = skip_n_col(bee->buf[bee->toprow+j].p, bee->leftcol, &remainder);
+      s = skip_n_col(bee->buf[bee->toprow+j].chars, bee->leftcol, &remainder);
       println(remainder, j, s, screen_width);
     }
 
     // insert buffer
-    s = skip_n_col(bee->buf[bee->ins_y].p, bee->leftcol, &remainder);
-    println(remainder, bee->ins_y-bee->toprow, bee->buf[bee->ins_y].p, bee->ins_vx);
+    s = skip_n_col(bee->buf[bee->ins_y].chars, bee->leftcol, &remainder);
+    println(remainder, bee->ins_y-bee->toprow, bee->buf[bee->ins_y].chars, bee->ins_vx);
     int xx = bee->ins_vx - bee->leftcol; // relative to the screen
     int yy = bee->ins_y - bee->toprow; // relative to the screen
     print_insert_buffer(bee, &xx, &yy);
-    println(xx, yy, bee->buf[bee->ins_y].p + bee->ins_bx, screen_width);
+    println(xx, yy, bee->buf[bee->ins_y].chars + bee->ins_bx, screen_width);
     tb_set_cursor(xx, yy);
 
     // after insert buffer
     //int num_lines_inserted = bee->y - bee->ins_y;
     //for(int j = yy+1; j<screen_height && bee->toprow+j < bee->buf_len; j++){
     //  s = skip_n_col(
-    //      bee->buf[bee->toprow+j-num_lines_inserted].p, bee->leftcol, &remainder);
+    //      bee->buf[bee->toprow+j-num_lines_inserted].chars, bee->leftcol, &remainder);
     //  println(remainder, j, s, screen_width);
     //}
     for(int j=0; j+yy+1<screen_height && bee->ins_y+j < bee->buf_len; j++){
       s = skip_n_col(
-	  bee->buf[bee->ins_y+j+1].p, bee->leftcol, &remainder);
+	  bee->buf[bee->ins_y+j+1].chars, bee->leftcol, &remainder);
       println(remainder, yy+1+j, s, screen_width);
     }
   }
   else { // mode != INSERT
     for(int j=0; j < screen_height && j+bee->toprow < bee->buf_len; j++){
-      s = skip_n_col(bee->buf[bee->toprow+j].p, bee->leftcol, &remainder);
-      //s = bee->buf[bee->toprow+j].p; remainder = 0;
+      s = skip_n_col(bee->buf[bee->toprow+j].chars, bee->leftcol, &remainder);
+      //s = bee->buf[bee->toprow+j].chars; remainder = 0;
       if(s)
       println(remainder, j, s, screen_width);
     }
@@ -504,12 +503,12 @@ static inline void print_screen(const struct bee *bee){
 
 static inline void autoscroll_x(struct bee *bee){
   // cursor too far to the right
-  if(bee->vx + columnlen(&bee->buf[YY].p[XX], bee->vx) > screen_width + bee->leftcol){
+  if(bee->vx + columnlen(&bee->buf[YY].chars[XX], bee->vx) > screen_width + bee->leftcol){
     int bx_leftcol, vx_leftcol;
-    vx_to_bx(bee->buf[bee->y].p, bee->leftcol, &bx_leftcol, &vx_leftcol);
-    while(bee->vx + columnlen(&bee->buf[YY].p[XX], bee->vx) > screen_width + bee->leftcol){
-      bee->leftcol += columnlen(bee->buf[bee->y].p + bx_leftcol, bee->leftcol);
-      bx_leftcol += bytelen(bee->buf[bee->y].p + bx_leftcol);
+    vx_to_bx(bee->buf[bee->y].chars, bee->leftcol, &bx_leftcol, &vx_leftcol);
+    while(bee->vx + columnlen(&bee->buf[YY].chars[XX], bee->vx) > screen_width + bee->leftcol){
+      bee->leftcol += columnlen(bee->buf[bee->y].chars + bx_leftcol, bee->leftcol);
+      bx_leftcol += bytelen(bee->buf[bee->y].chars + bx_leftcol);
     }
   }
   // cursor too far to the left
@@ -533,24 +532,24 @@ static inline void autoscroll(struct bee *bee){
 
 static inline void n_h(struct bee *bee){
   if(bee->bx > 0){
-    //vx_to_bx(bee->buf[YY].p, bee->vx-1, &bee->bx, &bee->vx);
+    //vx_to_bx(bee->buf[YY].chars, bee->vx-1, &bee->bx, &bee->vx);
     // that would be enough, the following is an optimization
-    if ( *(&bee->buf[YY].p[XX]-1) == '\t' ) {
-      vx_to_bx(bee->buf[YY].p, bee->vx-1, &bee->bx, &bee->vx);
+    if ( *(&bee->buf[YY].chars[XX]-1) == '\t' ) {
+      vx_to_bx(bee->buf[YY].chars, bee->vx-1, &bee->bx, &bee->vx);
     } else {
-      bee->bx = utf8prev(bee->buf[YY].p, bee->bx);
-      bee->vx -= columnlen(&bee->buf[YY].p[XX], bee->vx);
+      bee->bx = utf8prev(bee->buf[YY].chars, bee->bx);
+      bee->vx -= columnlen(&bee->buf[YY].chars[XX], bee->vx);
     }
     autoscroll_x(bee);
   }
   bee->vxgoal = bee->vx;
 }
 static inline void n_l(struct bee *bee){
-  //if(bee->bx + bytelen(&bee->buf[YY].p[XX]) < bee->buf[YY].len){
+  //if(bee->bx + bytelen(&bee->buf[YY].chars[XX]) < bee->buf[YY].len){
   // allow go till the linebreak character
-  if(bee->bx + bytelen(&bee->buf[YY].p[XX]) <= bee->buf[YY].len){
-    bee->vx += columnlen(&bee->buf[YY].p[XX], bee->vx);
-    bee->bx += bytelen(&bee->buf[YY].p[XX]);
+  if(bee->bx + bytelen(&bee->buf[YY].chars[XX]) <= bee->buf[YY].len){
+    bee->vx += columnlen(&bee->buf[YY].chars[XX], bee->vx);
+    bee->bx += bytelen(&bee->buf[YY].chars[XX]);
     autoscroll_x(bee);
   }
   bee->vxgoal = bee->vx;
@@ -558,9 +557,9 @@ static inline void n_l(struct bee *bee){
 
 static inline void n_l_pastend(struct bee *bee){
   // you can go past the end of the line so you can append at the end of the line
-  if(bee->bx + bytelen(&bee->buf[YY].p[XX]) <= bee->buf[YY].len){
-    bee->vx += columnlen(&bee->buf[YY].p[XX], bee->vx);
-    bee->bx += bytelen(&bee->buf[YY].p[XX]);
+  if(bee->bx + bytelen(&bee->buf[YY].chars[XX]) <= bee->buf[YY].len){
+    bee->vx += columnlen(&bee->buf[YY].chars[XX], bee->vx);
+    bee->bx += bytelen(&bee->buf[YY].chars[XX]);
     autoscroll_x(bee);
   }
   bee->vxgoal = bee->vx;
@@ -571,7 +570,7 @@ static inline void n_j(struct bee *bee){
   bee->y++;
 
   // adjust column position
-  vx_to_bx(bee->buf[YY].p, bee->vxgoal, &bee->bx, &bee->vx);
+  vx_to_bx(bee->buf[YY].chars, bee->vxgoal, &bee->bx, &bee->vx);
 
   autoscroll(bee);
 }
@@ -580,7 +579,7 @@ static inline void n_k(struct bee *bee){
   bee->y--;
 
   // adjust column position
-  vx_to_bx(bee->buf[YY].p, bee->vxgoal, &bee->bx, &bee->vx);
+  vx_to_bx(bee->buf[YY].chars, bee->vxgoal, &bee->bx, &bee->vx);
 
   autoscroll(bee);
 }
@@ -796,7 +795,7 @@ static inline void bee_init(struct bee *bee){
   bee->y = 0;
   bee->leftcol = bee->toprow = 0;
   bee->bx = bee->vx = bee->vxgoal = 0;
-  bee->ins_buf.p = NULL;
+  bee->ins_buf.chars = NULL;
   bee->undo_stack = bee->redo_stack = NULL;
 }
 
