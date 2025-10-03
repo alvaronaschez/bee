@@ -64,8 +64,6 @@ struct change_stack{
 
 struct bee {
   enum mode mode;
-  //struct text *buf;
-  // TODO:
   struct text buf;
   char *filename;
 
@@ -127,6 +125,7 @@ struct text text_from_string(struct string *str, int nlines){
   struct text retval;
   char *s = str->p;
   retval.p = malloc(nlines*sizeof(struct string));
+  retval.len = nlines;
 
   for(int i=0; i<nlines; i++){
     char *end = strchrnul(s, '\n');
