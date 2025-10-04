@@ -1,3 +1,6 @@
+#ifndef BEE_TEXT_H
+#define BEE_TEXT_H
+
 struct string {
   char *p;
   int len, cap;
@@ -21,4 +24,6 @@ struct delete_cmd {
 struct delete_cmd text_insert(struct text*, struct insert_cmd); 
 
 struct insert_cmd text_delete(struct text*, const struct delete_cmd); 
+
+#endif
 
