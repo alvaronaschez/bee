@@ -8,6 +8,7 @@
 #include <string.h>
 #include <wchar.h>
 #include <locale.h>
+#include <libgen.h>
 
 #define LOCALE "en_US.UTF-8"
 #define fg_color TB_BLACK
@@ -28,6 +29,7 @@ inline static void flog(const char *msg){
   time_t t = time(NULL);
   FILE *f = fopen("./bee.log", "a");
   fprintf(f, "%s - %s\n", ctime(&t), msg);
+  assert(0 == fclose(f));
 }
 #else
 inline static void flog(const char *msg){}
@@ -254,8 +256,17 @@ static inline struct text load_file(const char *filename){
   return retval;
 }
 
-// TODO
-static inline void save_file(){
+static inline void save_file(const struct text *txt, const char *filename){
+  char *tmp = malloc(strlen(filename)+strlen(".bee.bak")+1);
+  sprintf(tmp, "%s.bee.bak", filename);
+  assert(0==rename(filename, tmp));
+  FILE *f = fopen(filename, "a");
+  assert(f);
+  for(int i=0; i<txt->len; i++)
+    fprintf(f, "%s\n", txt->p[i].p);
+  assert(0==fclose(f));
+  assert(0==remove(tmp));
+  free(tmp);
 }
 
 static inline void print_tb(int x, int y, char* c){
@@ -606,6 +617,8 @@ static inline char normal_read_key(struct bee *bee){
     return 0;
   case TB_KEY_CTRL_R:
     n_Cr(bee); break;
+  case TB_KEY_CTRL_W:
+    save_file(&bee->buf, bee->filename);
   }
   return 1;
 }
