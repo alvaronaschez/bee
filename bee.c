@@ -451,8 +451,9 @@ static inline void n_x(struct bee *bee){
     .leftcol=bee->leftcol, .toprow=bee->toprow,
     .op = INS,
   };
+  int blen =  bytelen(&bee->buf.p[YY].p[XX]);
   change->cmd.i = text_delete(&bee->buf,
-      (struct delete_cmd){.x=bee->bx, .y=bee->y, .xx=bee->bx, .yy=bee->y});
+      (struct delete_cmd){.x=bee->bx, .y=bee->y, .xx=bee->bx+blen-1, .yy=bee->y});
   bee->undo_stack = change;
   bee->undo_stack->next = old_undo_stack;
 
