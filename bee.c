@@ -41,18 +41,6 @@ enum mode {
 
 char *mode_label[] = {"N", "I", "C"};
 
-//struct string {
-//  char *chars; // null terminated
-//  int len, cap; // length and capacity
-//};
-
-//struct delete_command{
-//  int x, y, xx, yy;
-//};
-//struct insert_command{
-//  int x, y, len;
-//  struct string *txt;
-//};
 enum operation { INS, DEL};
 struct change_stack{
   int y, bx, vx, leftcol, toprow;
@@ -100,29 +88,11 @@ void string_append(struct string *s, const char *t){
 }
 
 /**
- * @brief Splits a string with linesbreak into an array of strings w/o linebreaks
+ * @brief Splits a string with linesbreak into a text struct
  *
  * @warning Takes ownership of `str`.
  * The caller must not use or free `str` after this call.
  */
-struct string *string_split_lines(struct string *str, int nlines){
-  char *s = str->p;
-  struct string *inserted_lines = malloc(nlines*sizeof(struct string));
-
-  for(int i=0; i<nlines; i++){
-    char *end = strchrnul(s, '\n');
-    inserted_lines[i].p = malloc(end-s+1);
-    memcpy(inserted_lines[i].p, s, end-s);
-    inserted_lines[i].p[end-s] = '\0'; // null terminated string
-    inserted_lines[i].cap = inserted_lines[i].len = end-s;
-    s = end+1;
-  }
-
-  string_destroy(str);
-
-  return inserted_lines;
-}
-
 struct text text_from_string(struct string *str, int nlines){
   struct text retval;
   char *s = str->p;
@@ -209,8 +179,7 @@ void change_stack_destroy(struct change_stack *cs){
   }
 }
 
-
-static inline struct string *_load_file(const char *filename, int *len){
+static inline struct string *load_file(const char *filename, int *len){
   if (filename == NULL) return 0;
   FILE *fp = fopen(filename, "r");
   assert(fp);
@@ -247,13 +216,6 @@ static inline struct string *_load_file(const char *filename, int *len){
   free(fcontent);
   // calle should free buf
   return buf;
-}
-static inline struct text load_file(const char *filename){
-  int len;
-  struct text retval;
-  retval.p = _load_file(filename, &len);
-  retval.len = len;
-  return retval;
 }
 
 static inline void save_file(const struct text *txt, const char *filename){
@@ -725,8 +687,6 @@ int main(int argc, char **argv){
     return 1;
   }
 
-  flog("hey");
-
   setlocale(LC_CTYPE, LOCALE);
 
   struct bee bee;
@@ -738,7 +698,7 @@ int main(int argc, char **argv){
     return 1;
   }
 
-  bee.buf = load_file(bee.filename);
+  bee.buf.p = load_file(bee.filename, &bee.buf.len);
 
   tb_init();
   tb_set_clear_attrs(fg_color, bg_color);

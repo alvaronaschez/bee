@@ -1,7 +1,7 @@
-- save to file
 - undo/redo (wip - almost done, review cursor/scroll position after undo/redo)
 - tests (wip)
 - resize
+- search
 - yank/paste
 - visual mode
 
