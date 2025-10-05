@@ -67,8 +67,11 @@ struct delete_cmd text_insert(struct text *txt, struct insert_cmd cmd) {
 
   // backup the rest of the insertion line for later
   int aux_len = txt->p[y].len - x;
-  char *aux = malloc(txt->p[y].len - x +1);
-  strcpy(aux, &txt->p[y].p[x]);
+  char *aux = NULL;
+  if(aux_len){
+    aux = malloc(txt->p[y].len - x +1);
+    strcpy(aux, &txt->p[y].p[x]);
+  }
 
   // copy the first line
   txt->p[y].p[x] = '\0';
@@ -87,14 +90,16 @@ struct delete_cmd text_insert(struct text *txt, struct insert_cmd cmd) {
   }
 
   // append the line we backed up before
-  txt->p[yy].len = txt->p[yy].cap = txt->p[yy].len + aux_len;
-  txt->p[yy].p = realloc(txt->p[yy].p, txt->p[yy].len +1);
-  strcat(txt->p[yy].p, aux);
+  if(aux){
+    txt->p[yy].len = txt->p[yy].cap = txt->p[yy].len + aux_len;
+    txt->p[yy].p = realloc(txt->p[yy].p, txt->p[yy].len +1);
+    strcat(txt->p[yy].p, aux);
+    free(aux);
+  }
 
   struct delete_cmd retval = insert_cmd_inverse(txt, &cmd);
   free(ntxt.p[0].p);
   free(ntxt.p);
-  free(aux);
   return retval;
 }
 
