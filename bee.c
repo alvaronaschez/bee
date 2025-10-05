@@ -187,6 +187,13 @@ static inline struct string *load_file(const char *filename, int *len){
   assert(res == 0);
   long fsize = ftell(fp);
   assert(fsize >= 0);
+  if(fsize==0){
+    *len = 1;
+    struct string *retval = malloc(sizeof(struct string));
+    retval[0].cap = retval[0].len = 0;
+    retval[0].p = calloc(1,1);
+    return retval;
+  }
   rewind(fp);
   char *fcontent = (char*) malloc(fsize * sizeof(char));
   fread(fcontent, 1, fsize, fp);
