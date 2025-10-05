@@ -321,7 +321,7 @@ static inline void print_screen(const struct bee *bee){
     //      bee->buf.p[bee->toprow+j-num_lines_inserted].p, bee->leftcol, &remainder);
     //  println(remainder, j, s, screen_width);
     //}
-    for(int j=0; j+yy+1<screen_height && bee->ins_y+j < bee->buf.len; j++){
+    for(int j=0; j+yy+1<screen_height && bee->ins_y+j < bee->buf.len-1; j++){
       s = skip_n_col(
 	  bee->buf.p[bee->ins_y+j+1].p, bee->leftcol, &remainder);
       println(remainder, yy+1+j, s, screen_width);
