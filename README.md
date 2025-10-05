@@ -1,6 +1,6 @@
 # Bee
 
-A suckless Vi-like text editor
+A Vi-like text editor
 
 ## How to install Bee?
 
