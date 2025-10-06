@@ -100,7 +100,8 @@ struct text text_from_string(struct string *str, int nlines){
   retval.len = nlines;
 
   for(int i=0; i<nlines; i++){
-    char *end = strchrnul(s, '\n');
+    char *end = strchr(s, '\n');
+    end = end ? end : s + strlen(s);
     retval.p[i].p = malloc(end-s+1);
     memcpy(retval.p[i].p, s, end-s);
     retval.p[i].p[end-s] = '\0'; // null terminated string
