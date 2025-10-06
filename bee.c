@@ -1,7 +1,3 @@
-#ifndef _GNU_SOURCE
-#define _GNU_SOURCE
-#endif
-
 #include "text.h"
 #define TB_IMPL
 #include "termbox2.h"
@@ -25,19 +21,6 @@
 #define XX bee->bx
 #define MAX(a,b) ((a)>(b)?(a):(b))
 #define MIN(a,b) ((a)<(b)?(a):(b))
-
-/*
- * Provide strchrnul() fallback for macOS/BSD where it's missing.
- * Linux (glibc) already provides it.
- */
-#ifndef HAVE_STRCHRNUL
-#if !(defined(__GLIBC__) || defined(__GNU_LIBRARY__))
-static inline char *strchrnul(const char *s, int c) {
-    char *p = strchr(s, c);
-    return p ? p : (char *)s + strlen(s);
-}
-#endif
-#endif
 
 //#define DEBUG
 #ifdef DEBUG
@@ -117,7 +100,8 @@ struct text text_from_string(struct string *str, int nlines){
   retval.len = nlines;
 
   for(int i=0; i<nlines; i++){
-    char *end = strchrnul(s, '\n');
+    char *end = strchr(s, '\n');
+    end = end ? end : s + strlen(s);
     retval.p[i].p = malloc(end-s+1);
     memcpy(retval.p[i].p, s, end-s);
     retval.p[i].p[end-s] = '\0'; // null terminated string
