@@ -1,4 +1,4 @@
-- command mode
+- alert messages
 - undo/redo (wip - almost done, review cursor/scroll position after undo/redo)
 - tests (wip)
 - resize

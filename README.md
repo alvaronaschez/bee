@@ -27,12 +27,18 @@ Try to run `./bee bee.c` to use `bee` to edit bee itself.
 - x - delete the character under the cursor
 - i - insert
 - a - append
-- Ctrl+w - save file
-- Ctrl+q - exit Bee
 - u - undo
 - Ctrl+r - redo
+- : - command mode
 
 ### INSERT MODE
 
 - Esc - to normal mode
+
+### COMMAND MODE
+
+- w - save file
+- q - quit
+- wq - save file then quit
+
 

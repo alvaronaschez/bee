@@ -633,12 +633,8 @@ static inline void normal_read_key(struct bee *bee){
     n_colon(bee); break;
   }
   else if(ev.key!=0) switch(ev.key){
-  case TB_KEY_CTRL_Q:
-    bee->quit = 1; break;
   case TB_KEY_CTRL_R:
     n_Cr(bee); break;
-  case TB_KEY_CTRL_W:
-    save_file(&bee->buf, bee->filename);
   }
 }
 
