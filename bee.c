@@ -312,6 +312,15 @@ static inline void print_margin(const struct bee *bee){
       tb_printf(0, i, MARGIN_FG, MARGIN_BG, "%-3d ", ABS(i+bee->toprow-bee->y));
 }
 
+static inline void print_cursor(const struct bee *bee){
+  if(bee->bx == bee->buf.p[YY].len && bee->mode != INSERT){
+    tb_hide_cursor();
+    tb_set_cell(bee->vx+MARGIN_LEN - bee->leftcol, bee->y - bee->toprow, ' ', FG_COLOR, TB_CYAN);
+  } else {
+    tb_set_cursor(bee->vx+MARGIN_LEN - bee->leftcol, bee->y - bee->toprow);
+  }
+}
+
 static inline void print_screen(const struct bee *bee){
   tb_clear();
   int remainder;
@@ -330,7 +339,6 @@ static inline void print_screen(const struct bee *bee){
     int yy = bee->ins_y - bee->toprow; // relative to the screen
     print_insert_buffer(bee, &xx, &yy);
     println(xx+MARGIN_LEN, yy, bee->buf.p[bee->ins_y].p + bee->ins_bx, SCREEN_WIDTH);
-    tb_set_cursor(xx+MARGIN_LEN, yy);
 
     // after insert buffer
     //int num_lines_inserted = bee->y - bee->ins_y;
@@ -352,17 +360,11 @@ static inline void print_screen(const struct bee *bee){
       if(s)
       println(remainder+MARGIN_LEN, j, s, SCREEN_WIDTH);
     }
-    if(bee->bx < bee->buf.p[YY].len)
-      tb_set_cursor(bee->vx+MARGIN_LEN - bee->leftcol, bee->y - bee->toprow);
-    else {
-      tb_hide_cursor();
-      tb_set_cell(bee->vx+MARGIN_LEN - bee->leftcol, bee->y - bee->toprow, ' ', FG_COLOR, TB_CYAN);
-    }
-
   }
   
   print_footer(bee);
   print_margin(bee);
+  print_cursor(bee);
   tb_present();
 }
 
