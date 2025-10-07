@@ -107,6 +107,8 @@ struct insert_cmd text_delete(struct text *txt, const struct delete_cmd cmd) {
   struct insert_cmd retval = delete_cmd_inverse(txt, &cmd);
 
   int x = cmd.x; int y = cmd.y; int xx = cmd.xx; int yy = cmd.yy;
+  if(yy == txt->len-1 && xx == txt->p[yy].len)
+    xx--;
 
   if(x == txt->p[y].len){} // TODO: is there anything to do here
   if(xx == txt->p[yy].len){
