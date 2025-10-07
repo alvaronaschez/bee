@@ -145,6 +145,19 @@ void test_del7(void){ // multiple sequential deletions
     text_insert(t, undo[25-i]);
   assert_text_equals(t, o);
 }
+void test_del8(void){
+  char * aux = "- undo/redo (wip - almost done, review cursor/scroll position after undo/redo)";
+  struct text *o = text_from((char *[]){aux}, 1);
+  struct text *t = text_from((char *[]){aux}, 1);
+  struct text *expected = text_from((char *[]){"- undoredo (wip - almost done, review cursor/scroll position after undo/redo)"}, 1);
+  struct delete_cmd del_cmd = {.y=0, .x=6, .yy=0, .xx=6};
+  struct insert_cmd ins_cmd = text_delete(t, del_cmd);
+  assert_text_equals(t, expected);
+
+  // test undo
+  text_insert(t, ins_cmd);
+  assert_text_equals(t, o);
+}
 
 void test_ins1(void){
   struct text *o = text_from((char *[]){"foo", "bar", "jam"}, 3);
@@ -234,6 +247,7 @@ int main(void) {
   test_del5();
   test_del6();
   test_del7();
+  test_del8();
 
   test_ins1();
   test_ins2();

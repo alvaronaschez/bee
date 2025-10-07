@@ -114,12 +114,17 @@ struct insert_cmd text_delete(struct text *txt, const struct delete_cmd cmd) {
     xx=-1;
   } 
 
-  int len = x + (txt->p[yy].len - 1 - xx);
+  int len_a = x;
+  int len_b = (txt->p[yy].len - 1 - xx);
+  int len = len_a + len_b;
   txt->p[y].p = realloc(txt->p[y].p, len + 1);
   txt->p[y].len = txt->p[y].cap = len;
-  txt->p[y].p[x] = '\0';
   if(yy < txt->len)
-    strcat(&txt->p[y].p[x], &txt->p[yy].p[xx+1]);
+    memmove(&txt->p[y].p[x], &txt->p[yy].p[xx+1], len_b);
+    // alternative way:
+    //memmove(&txt->p[y].p[x], &txt->p[yy].p[xx+1], strlen(&txt->p[yy].p[xx+1]));
+  txt->p[y].p[txt->p[y].len] = '\0';
+
 
   if(y < yy){
     int lines_to_delete = yy - y;
