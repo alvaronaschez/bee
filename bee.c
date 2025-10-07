@@ -11,16 +11,22 @@
 #include <libgen.h>
 
 #define LOCALE "en_US.UTF-8"
-#define fg_color TB_BLACK
-#define bg_color TB_WHITE
+#define FG_COLOR TB_WHITE
+#define BG_COLOR TB_BLACK
 #define tablen 8
 #define footerheight 1
+#define FOOTER_FG TB_MAGENTA
+#define FOOTER_BG TB_BLACK
+#define MARGIN_LEN 4
+#define MARGIN_FG TB_MAGENTA
+#define MARGIN_BG TB_BLACK
 #define screen_height (tb_height() - footerheight)
 #define screen_width (tb_width())
 #define YY bee->y
 #define XX bee->bx
 #define MAX(a,b) ((a)>(b)?(a):(b))
 #define MIN(a,b) ((a)<(b)?(a):(b))
+#define ABS(a) ((a)>=0?(a):-(a))
 
 //#define DEBUG
 #ifdef DEBUG
@@ -244,11 +250,11 @@ static inline void print_tb(int x, int y, char* c){
   if(*c == '\t')
     return;
   if(bytelen(c)==1)
-    tb_set_cell(x, y, *c, fg_color, bg_color);
+    tb_set_cell(x, y, *c, FG_COLOR, BG_COLOR);
   else {
       wchar_t wc;
       mbstowcs(&wc, c, 1);
-      tb_set_cell(x, y, wc, fg_color, bg_color);
+      tb_set_cell(x, y, wc, FG_COLOR, BG_COLOR);
   }
 }
 
@@ -275,15 +281,13 @@ static inline void println(int x, int y, char* s, int maxx){
 
 const char *footer_format = "<%s>  \"%s\"  [=%d]  L%d C%d";
 static inline void print_footer(const struct bee *bee){
-  uintattr_t bg = fg_color;
-  uintattr_t fg = TB_MAGENTA;
   for(int x=0; x<tb_width(); x++)
-    tb_print(x, tb_height()-1, fg, bg, " ");
+    tb_print(x, tb_height()-1, MARGIN_FG, MARGIN_BG, " ");
 
   char *mode = mode_label[bee->mode];
   int buf_len = bee->mode == INSERT ?
     bee->buf.len + bee->y - bee->ins_y : bee->buf.len;
-  tb_printf(0, tb_height() - 1, fg, bg, footer_format,
+  tb_printf(0, tb_height() - 1, MARGIN_FG, MARGIN_BG, footer_format,
             mode, bee->filename, buf_len, bee->y, bee->vx);
 }
 
@@ -295,11 +299,17 @@ static inline void print_insert_buffer(const struct bee *bee, int *x, int *y){
       *x = 0;
       // TODO: skip chars at the left of bee->leftcol 
     } else {
-      print_tb(*x, *y, c);
+      print_tb(*x+MARGIN_LEN, *y, c);
       (*x) += columnlen(c, *x);
     }
     c += bytelen(c);
   }
+}
+
+static inline void print_margin(const struct bee *bee){
+  for(int i=0; i<screen_height; i++)
+    if(i+bee->toprow < bee->buf.len)
+      tb_printf(0, i, MARGIN_FG, MARGIN_BG, "%-3d ", ABS(i+bee->toprow-bee->y));
 }
 
 static inline void print_screen(const struct bee *bee){
@@ -310,17 +320,17 @@ static inline void print_screen(const struct bee *bee){
     // before insert buffer
     for(int j=0; bee->toprow+j<bee->buf.len && bee->toprow+j<bee->ins_y; j++){
       s = skip_n_col(bee->buf.p[bee->toprow+j].p, bee->leftcol, &remainder);
-      println(remainder, j, s, screen_width);
+      println(remainder+MARGIN_LEN, j, s, screen_width);
     }
 
     // insert buffer
     s = skip_n_col(bee->buf.p[bee->ins_y].p, bee->leftcol, &remainder);
-    println(remainder, bee->ins_y-bee->toprow, bee->buf.p[bee->ins_y].p, bee->ins_vx);
+    println(remainder+MARGIN_LEN, bee->ins_y - bee->toprow, bee->buf.p[bee->ins_y].p, bee->ins_vx+MARGIN_LEN);
     int xx = bee->ins_vx - bee->leftcol; // relative to the screen
     int yy = bee->ins_y - bee->toprow; // relative to the screen
     print_insert_buffer(bee, &xx, &yy);
-    println(xx, yy, bee->buf.p[bee->ins_y].p + bee->ins_bx, screen_width);
-    tb_set_cursor(xx, yy);
+    println(xx+MARGIN_LEN, yy, bee->buf.p[bee->ins_y].p + bee->ins_bx, screen_width);
+    tb_set_cursor(xx+MARGIN_LEN, yy);
 
     // after insert buffer
     //int num_lines_inserted = bee->y - bee->ins_y;
@@ -332,7 +342,7 @@ static inline void print_screen(const struct bee *bee){
     for(int j=0; j+yy+1<screen_height && bee->ins_y+j < bee->buf.len-1; j++){
       s = skip_n_col(
 	  bee->buf.p[bee->ins_y+j+1].p, bee->leftcol, &remainder);
-      println(remainder, yy+1+j, s, screen_width);
+      println(remainder+MARGIN_LEN, yy+1+j, s, screen_width);
     }
   }
   else { // mode != INSERT
@@ -340,12 +350,13 @@ static inline void print_screen(const struct bee *bee){
       s = skip_n_col(bee->buf.p[bee->toprow+j].p, bee->leftcol, &remainder);
       //s = bee->buf.p[bee->toprow+j].p; remainder = 0;
       if(s)
-      println(remainder, j, s, screen_width);
+      println(remainder+MARGIN_LEN, j, s, screen_width);
     }
-    tb_set_cursor(bee->vx - bee->leftcol, bee->y - bee->toprow);
+    tb_set_cursor(bee->vx+MARGIN_LEN - bee->leftcol, bee->y - bee->toprow);
   }
   
   print_footer(bee);
+  print_margin(bee);
   tb_present();
 }
 
@@ -712,7 +723,7 @@ int main(int argc, char **argv){
   bee.buf.p = load_file(bee.filename, &bee.buf.len);
 
   tb_init();
-  tb_set_clear_attrs(fg_color, bg_color);
+  tb_set_clear_attrs(FG_COLOR, BG_COLOR);
   //tb_set_input_mode(TB_INPUT_ESC); // default
   //tb_set_input_mode(TB_INPUT_ALT);
 
