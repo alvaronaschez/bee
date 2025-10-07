@@ -70,7 +70,11 @@ struct bee {
   int ins_y, ins_bx, ins_vx;
   int ins_toprow, ins_leftcol;
 
+  struct string cmd_buf;
+
   struct change_stack *undo_stack, *redo_stack;
+
+  char quit;
 };
 
 void string_init(struct string *s){
@@ -282,13 +286,17 @@ static inline void println(int x, int y, char* s, int maxx){
 const char *footer_format = "<%s>  \"%s\"  [=%d]  L%d C%d";
 static inline void print_footer(const struct bee *bee){
   for(int x=0; x<tb_width(); x++)
-    tb_print(x, tb_height()-1, MARGIN_FG, MARGIN_BG, " ");
-
-  char *mode = mode_label[bee->mode];
-  int buf_len = bee->mode == INSERT ?
-    bee->buf.len + bee->y - bee->ins_y : bee->buf.len;
-  tb_printf(0, tb_height() - 1, MARGIN_FG, MARGIN_BG, footer_format,
-            mode, bee->filename, buf_len, bee->y, bee->vx);
+    tb_print(x, tb_height()-1, FOOTER_FG, FOOTER_BG, " ");
+  
+  if(bee->mode == COMMAND){
+    tb_printf(0, tb_height() - 1, FOOTER_FG, FOOTER_BG, "<C>  %s", bee->cmd_buf.p);
+  } else {
+    char *mode = mode_label[bee->mode];
+    int buf_len = bee->mode == INSERT ?
+      bee->buf.len + bee->y - bee->ins_y : bee->buf.len;
+    tb_printf(0, tb_height() - 1, FOOTER_FG, FOOTER_BG, footer_format,
+             mode, bee->filename, buf_len, bee->y, bee->vx);
+  }
 }
 
 static inline void print_insert_buffer(const struct bee *bee, int *x, int *y){
@@ -307,13 +315,25 @@ static inline void print_insert_buffer(const struct bee *bee, int *x, int *y){
 }
 
 static inline void print_margin(const struct bee *bee){
+  int nlines_ins_buf = 0;
+  if(bee->mode == INSERT){
+    for(int i=0; i<bee->ins_buf.len; i++)
+      if(bee->ins_buf.p[i] == '\n')
+	nlines_ins_buf++;
+  }
   for(int i=0; i<SCREEN_HEIGHT; i++)
-    if(i+bee->toprow < bee->buf.len)
+    if(i+bee->toprow < bee->buf.len + nlines_ins_buf)
       tb_printf(0, i, MARGIN_FG, MARGIN_BG, "%-3d ", ABS(i+bee->toprow-bee->y));
 }
 
 static inline void print_cursor(const struct bee *bee){
-  if(bee->bx == bee->buf.p[YY].len && bee->mode != INSERT){
+  if(bee->mode == COMMAND){
+    int x = 0;
+    for(int i=0; i<bee->cmd_buf.len; i++)
+      x += bytelen(&bee->cmd_buf.p[i]);
+    tb_set_cursor( 5 + x, tb_height()-1);
+  }
+  else if(bee->bx == bee->buf.p[YY].len && bee->mode != INSERT){
     tb_hide_cursor();
     tb_set_cell(bee->vx+MARGIN_LEN - bee->leftcol, bee->y - bee->toprow, ' ', FG_COLOR, TB_CYAN);
   } else {
@@ -503,6 +523,12 @@ static inline void n_a(struct bee *bee){
   n_i(bee);
 }
 
+static inline void n_colon(struct bee *bee){
+  string_init(&bee->cmd_buf);
+  string_append(&bee->cmd_buf, ":");
+  bee->mode = COMMAND;
+}
+
 static inline void resize(const struct bee *bee){
 }
 
@@ -577,15 +603,16 @@ static inline void bee_redo(struct bee *bee){
   bee->undo_stack = cc;
 }
 
-static inline char normal_read_key(struct bee *bee){
+static inline void normal_read_key(struct bee *bee){
   struct tb_event ev;
   tb_poll_event(&ev);
   if(ev.type == TB_EVENT_RESIZE) resize(bee);
   else if(ev.ch!=0) switch(ev.ch){
   case 'Z':
     tb_poll_event(&ev);
-    return ev.ch != 'Q';
-    //return ev.ch == 'Q' ? 0 : 1;
+    if(ev.ch == 'Q') 
+      bee->quit = 1;
+    break;
   case 'i':
     n_i(bee); break;
   case 'a':
@@ -602,20 +629,24 @@ static inline char normal_read_key(struct bee *bee){
     n_x(bee); break;
   case 'u':
     n_u(bee); break;
+  case ':':
+    n_colon(bee); break;
   }
   else if(ev.key!=0) switch(ev.key){
   case TB_KEY_CTRL_Q:
-    return 0;
+    bee->quit = 1; break;
   case TB_KEY_CTRL_R:
     n_Cr(bee); break;
   case TB_KEY_CTRL_W:
     save_file(&bee->buf, bee->filename);
   }
-  return 1;
 }
 
 static inline void i_esc(struct bee *bee){
-  if(bee->ins_buf.len == 0) return;
+  if(bee->ins_buf.len == 0){
+    bee->mode = NORMAL;
+    return;
+  }
   change_stack_destroy(bee->redo_stack);
   bee->redo_stack = NULL;
   struct change_stack *old_undo_stack = bee->undo_stack;
@@ -623,6 +654,7 @@ static inline void i_esc(struct bee *bee){
   int num_lines_inserted = bee->y - bee->ins_y;
   int num_lines_ins_buf = num_lines_inserted +1;
   struct text inserted_lines = text_from_string(&bee->ins_buf, num_lines_ins_buf);
+  bee->ins_buf.len = bee->ins_buf.cap = 0; bee->ins_buf.p = NULL;
 
   struct change_stack *change = malloc(sizeof(struct change_stack));
   *change = (struct change_stack){
@@ -639,13 +671,26 @@ static inline void i_esc(struct bee *bee){
   bee->mode = NORMAL;
 }
 
-static inline char insert_read_key(struct bee *bee){
+static inline void i_backspace(struct bee *bee){
+  if(bee->ins_buf.len == 0 || bee->bx == 0)
+    return;
+
+  bee->bx -= bytelen(&bee->ins_buf.p[bee->ins_buf.len-1]);
+  bee->vx -= columnlen(&bee->ins_buf.p[bee->ins_buf.len-1], bee->ins_vx);
+  bee->ins_buf.p[bee->ins_buf.len-1] = '\0';
+  bee->ins_buf.len--;
+}
+
+static inline void insert_read_key(struct bee *bee){
   struct tb_event ev;
   tb_poll_event(&ev);
   if(ev.type == TB_EVENT_RESIZE) resize(bee);
   else if(ev.key!=0) switch(ev.key){
     case TB_KEY_ESC:
       i_esc(bee); break;
+    case TB_KEY_BACKSPACE:
+    case TB_KEY_BACKSPACE2:
+      i_backspace(bee); break;
     case TB_KEY_ENTER:
       bee->y++;
       bee->bx = bee->vx = 0;
@@ -659,38 +704,72 @@ static inline char insert_read_key(struct bee *bee){
     bee->bx += strlen(s);
     bee->vx += columnlen(s, bee->vx);
   }
-  return 1;
 }
 
 static inline void c_esc(struct bee *bee){
+  free(bee->cmd_buf.p);
+  bee->cmd_buf.len = bee->cmd_buf.cap = 0;
   bee->mode = NORMAL;
 }
 
-static inline char command_read_key(struct bee *bee){
+static inline void c_backspace(struct bee *bee){
+  if(bee->cmd_buf.len == 1)
+    c_esc(bee);
+  else {
+    bee->cmd_buf.p[bee->cmd_buf.len-1] = '\0';
+    bee->cmd_buf.len--;
+  }
+}
+
+static inline void c_enter(struct bee *bee){
+  if(!strcmp(bee->cmd_buf.p, ":q")){
+    bee->quit = 1;
+  }
+  else if(!strcmp(bee->cmd_buf.p, ":w")){
+    save_file(&bee->buf, bee->filename);
+  }
+  else if(!strcmp(bee->cmd_buf.p, ":wq")){
+    save_file(&bee->buf, bee->filename);
+    bee->quit = 1;
+  }
+  bee->mode = NORMAL;
+}
+
+static inline void command_read_key(struct bee *bee){
   struct tb_event ev;
   tb_poll_event(&ev);
   if(ev.type == TB_EVENT_RESIZE) resize(bee);
   else if(ev.key!=0) switch(ev.key){
   case TB_KEY_ESC:
     c_esc(bee); break;
+  case TB_KEY_BACKSPACE:
+  case TB_KEY_BACKSPACE2:
+    c_backspace(bee); break;
+  case TB_KEY_ENTER:
+    c_enter(bee); break;
   }
-  return 1;
+  else if(ev.ch){
+    char s[7];
+    tb_utf8_unicode_to_char(s, ev.ch);
+    string_append(&bee->cmd_buf, s);
+  }
 }
 
-static inline char read_key(struct bee *bee){
+static inline void read_key(struct bee *bee){
   switch(bee->mode){
   case NORMAL:
-    return normal_read_key(bee);
+    normal_read_key(bee); break;
   case INSERT:
-    return insert_read_key(bee);
+    insert_read_key(bee); break;
   case COMMAND:
-    return command_read_key(bee);
+    command_read_key(bee); break;
   default:
-    return 0;
+    break;
   }
 }
 
 static inline void bee_init(struct bee *bee){
+  bee->quit = 0;
   bee->mode = NORMAL;
   bee->filename = NULL;
   bee->buf.len = 0;
@@ -735,9 +814,14 @@ int main(int argc, char **argv){
   //tb_set_input_mode(TB_INPUT_ESC); // default
   //tb_set_input_mode(TB_INPUT_ALT);
 
-  do {
+  //do {
+  //  print_screen(&bee);
+  //} while(read_key(&bee));
+
+  while(!bee.quit){
     print_screen(&bee);
-  } while(read_key(&bee));
+    read_key(&bee);
+  }
 
   tb_shutdown();
   bee_destroy(&bee);
