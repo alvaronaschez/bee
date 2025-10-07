@@ -355,7 +355,7 @@ static inline void print_screen(const struct bee *bee){
     if(bee->bx < bee->buf.p[YY].len)
       tb_set_cursor(bee->vx+MARGIN_LEN - bee->leftcol, bee->y - bee->toprow);
     else {
-      tb_set_cursor(-1, -1);
+      tb_hide_cursor();
       tb_set_cell(bee->vx+MARGIN_LEN - bee->leftcol, bee->y - bee->toprow, ' ', FG_COLOR, TB_CYAN);
     }
 
