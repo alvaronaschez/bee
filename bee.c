@@ -595,6 +595,7 @@ static inline char normal_read_key(struct bee *bee){
 }
 
 static inline void i_esc(struct bee *bee){
+  if(bee->ins_buf.len == 0) return;
   change_stack_destroy(bee->redo_stack);
   bee->redo_stack = NULL;
   struct change_stack *old_undo_stack = bee->undo_stack;
