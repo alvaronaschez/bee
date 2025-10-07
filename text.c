@@ -127,7 +127,6 @@ struct insert_cmd text_delete(struct text *txt, const struct delete_cmd cmd) {
     //memmove(&txt->p[y].p[x], &txt->p[yy].p[xx+1], strlen(&txt->p[yy].p[xx+1]));
   txt->p[y].p[txt->p[y].len] = '\0';
 
-
   if(y < yy){
     int lines_to_delete = yy - y;
     for(int i=0; i<lines_to_delete; i++)

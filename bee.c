@@ -13,15 +13,15 @@
 #define LOCALE "en_US.UTF-8"
 #define FG_COLOR TB_WHITE
 #define BG_COLOR TB_BLACK
-#define tablen 8
-#define footerheight 1
+#define TAB_LEN 8
+#define FOOTER_HEIGHT 1
 #define FOOTER_FG TB_MAGENTA
 #define FOOTER_BG TB_BLACK
 #define MARGIN_LEN 4
 #define MARGIN_FG TB_MAGENTA
 #define MARGIN_BG TB_BLACK
-#define screen_height (tb_height() - footerheight)
-#define screen_width (tb_width())
+#define SCREEN_HEIGHT (tb_height() - FOOTER_HEIGHT)
+#define SCREEN_WIDTH (tb_width())
 #define YY bee->y
 #define XX bee->bx
 #define MAX(a,b) ((a)>(b)?(a):(b))
@@ -131,7 +131,7 @@ static inline int utf8len(const char* s){
 static inline int columnlen(const char* s, int col_off){
   // we need to know the col_off in order to compute the length of the tab char
   if(*s=='\t')
-    return tablen-col_off%tablen;
+    return TAB_LEN-col_off%TAB_LEN;
   wchar_t wc;
   mbtowc(&wc, s, MB_CUR_MAX);
   int width = wcwidth(wc);
@@ -307,7 +307,7 @@ static inline void print_insert_buffer(const struct bee *bee, int *x, int *y){
 }
 
 static inline void print_margin(const struct bee *bee){
-  for(int i=0; i<screen_height; i++)
+  for(int i=0; i<SCREEN_HEIGHT; i++)
     if(i+bee->toprow < bee->buf.len)
       tb_printf(0, i, MARGIN_FG, MARGIN_BG, "%-3d ", ABS(i+bee->toprow-bee->y));
 }
@@ -320,7 +320,7 @@ static inline void print_screen(const struct bee *bee){
     // before insert buffer
     for(int j=0; bee->toprow+j<bee->buf.len && bee->toprow+j<bee->ins_y; j++){
       s = skip_n_col(bee->buf.p[bee->toprow+j].p, bee->leftcol, &remainder);
-      println(remainder+MARGIN_LEN, j, s, screen_width);
+      println(remainder+MARGIN_LEN, j, s, SCREEN_WIDTH);
     }
 
     // insert buffer
@@ -329,28 +329,28 @@ static inline void print_screen(const struct bee *bee){
     int xx = bee->ins_vx - bee->leftcol; // relative to the screen
     int yy = bee->ins_y - bee->toprow; // relative to the screen
     print_insert_buffer(bee, &xx, &yy);
-    println(xx+MARGIN_LEN, yy, bee->buf.p[bee->ins_y].p + bee->ins_bx, screen_width);
+    println(xx+MARGIN_LEN, yy, bee->buf.p[bee->ins_y].p + bee->ins_bx, SCREEN_WIDTH);
     tb_set_cursor(xx+MARGIN_LEN, yy);
 
     // after insert buffer
     //int num_lines_inserted = bee->y - bee->ins_y;
-    //for(int j = yy+1; j<screen_height && bee->toprow+j < bee->buf.len; j++){
+    //for(int j = yy+1; j<SCREEN_HEIGHT && bee->toprow+j < bee->buf.len; j++){
     //  s = skip_n_col(
     //      bee->buf.p[bee->toprow+j-num_lines_inserted].p, bee->leftcol, &remainder);
-    //  println(remainder, j, s, screen_width);
+    //  println(remainder, j, s, SCREEN_WIDTH);
     //}
-    for(int j=0; j+yy+1<screen_height && bee->ins_y+j < bee->buf.len-1; j++){
+    for(int j=0; j+yy+1<SCREEN_HEIGHT && bee->ins_y+j < bee->buf.len-1; j++){
       s = skip_n_col(
 	  bee->buf.p[bee->ins_y+j+1].p, bee->leftcol, &remainder);
-      println(remainder+MARGIN_LEN, yy+1+j, s, screen_width);
+      println(remainder+MARGIN_LEN, yy+1+j, s, SCREEN_WIDTH);
     }
   }
   else { // mode != INSERT
-    for(int j=0; j < screen_height && j+bee->toprow < bee->buf.len; j++){
+    for(int j=0; j < SCREEN_HEIGHT && j+bee->toprow < bee->buf.len; j++){
       s = skip_n_col(bee->buf.p[bee->toprow+j].p, bee->leftcol, &remainder);
       //s = bee->buf.p[bee->toprow+j].p; remainder = 0;
       if(s)
-      println(remainder+MARGIN_LEN, j, s, screen_width);
+      println(remainder+MARGIN_LEN, j, s, SCREEN_WIDTH);
     }
     if(bee->bx < bee->buf.p[YY].len)
       tb_set_cursor(bee->vx+MARGIN_LEN - bee->leftcol, bee->y - bee->toprow);
@@ -384,10 +384,10 @@ static inline void print_screen(const struct bee *bee){
 
 static inline void autoscroll_x(struct bee *bee){
   // cursor too far to the right
-  if(bee->vx + columnlen(&bee->buf.p[YY].p[XX], bee->vx) > screen_width + bee->leftcol - MARGIN_LEN){
+  if(bee->vx + columnlen(&bee->buf.p[YY].p[XX], bee->vx) > SCREEN_WIDTH + bee->leftcol - MARGIN_LEN){
     int bx_leftcol, vx_leftcol;
     vx_to_bx(bee->buf.p[bee->y].p, bee->leftcol, &bx_leftcol, &vx_leftcol);
-    while(bee->vx + columnlen(&bee->buf.p[YY].p[XX], bee->vx) > screen_width + bee->leftcol - MARGIN_LEN){
+    while(bee->vx + columnlen(&bee->buf.p[YY].p[XX], bee->vx) > SCREEN_WIDTH + bee->leftcol - MARGIN_LEN){
       bee->leftcol += columnlen(bee->buf.p[bee->y].p + bx_leftcol, bee->leftcol);
       bx_leftcol += bytelen(bee->buf.p[bee->y].p + bx_leftcol);
     }
@@ -402,8 +402,8 @@ static inline void autoscroll_y(struct bee *bee){
   if(bee->toprow > bee->y)
     bee->toprow = bee->y;
   // cursor too far down
-  if(bee->y - bee->toprow >= screen_height)
-    bee->toprow = bee->y-screen_height+1;
+  if(bee->y - bee->toprow >= SCREEN_HEIGHT)
+    bee->toprow = bee->y-SCREEN_HEIGHT+1;
 }
 
 static inline void autoscroll(struct bee *bee){
