@@ -352,7 +352,13 @@ static inline void print_screen(const struct bee *bee){
       if(s)
       println(remainder+MARGIN_LEN, j, s, screen_width);
     }
-    tb_set_cursor(bee->vx+MARGIN_LEN - bee->leftcol, bee->y - bee->toprow);
+    if(bee->bx < bee->buf.p[YY].len)
+      tb_set_cursor(bee->vx+MARGIN_LEN - bee->leftcol, bee->y - bee->toprow);
+    else {
+      tb_set_cursor(-1, -1);
+      tb_set_cell(bee->vx+MARGIN_LEN - bee->leftcol, bee->y - bee->toprow, ' ', FG_COLOR, TB_CYAN);
+    }
+
   }
   
   print_footer(bee);
