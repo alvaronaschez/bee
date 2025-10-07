@@ -494,6 +494,7 @@ static inline void bee_save_cursor(const struct bee*bee, struct change_stack *ch
 static inline void bee_restore_cursor(struct bee *bee, const struct change_stack *ch){
   bee->y = ch->y; bee->bx = ch->bx; bee->vx = ch->vx;
   bee->toprow = ch->toprow; bee->leftcol = ch->leftcol;
+  autoscroll(bee);
 }
 
 /*
@@ -606,7 +607,7 @@ static inline void i_esc(struct bee *bee){
 
   struct change_stack *change = malloc(sizeof(struct change_stack));
   *change = (struct change_stack){
-    .y = bee->y, .bx = bee->bx, .vx = bee->vx,
+    .y = bee->ins_y, .bx = bee->ins_bx, .vx = bee->ins_vx,
     .leftcol=bee->leftcol, .toprow=bee->toprow,
     .op = DEL,
   };
