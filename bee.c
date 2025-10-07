@@ -378,10 +378,10 @@ static inline void print_screen(const struct bee *bee){
 
 static inline void autoscroll_x(struct bee *bee){
   // cursor too far to the right
-  if(bee->vx + columnlen(&bee->buf.p[YY].p[XX], bee->vx) > screen_width + bee->leftcol){
+  if(bee->vx + columnlen(&bee->buf.p[YY].p[XX], bee->vx) > screen_width + bee->leftcol - MARGIN_LEN){
     int bx_leftcol, vx_leftcol;
     vx_to_bx(bee->buf.p[bee->y].p, bee->leftcol, &bx_leftcol, &vx_leftcol);
-    while(bee->vx + columnlen(&bee->buf.p[YY].p[XX], bee->vx) > screen_width + bee->leftcol){
+    while(bee->vx + columnlen(&bee->buf.p[YY].p[XX], bee->vx) > screen_width + bee->leftcol - MARGIN_LEN){
       bee->leftcol += columnlen(bee->buf.p[bee->y].p + bx_leftcol, bee->leftcol);
       bx_leftcol += bytelen(bee->buf.p[bee->y].p + bx_leftcol);
     }

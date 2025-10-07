@@ -6,7 +6,6 @@
 - yank/paste
 - visual mode
 - open non existing file
-- line numbers
 
 ## minimal features:
   h j k l
