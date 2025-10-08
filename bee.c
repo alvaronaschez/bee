@@ -22,6 +22,7 @@
 #define MARGIN_BG TB_BLACK
 #define SCREEN_HEIGHT (tb_height() - FOOTER_HEIGHT)
 #define SCREEN_WIDTH (tb_width())
+
 #define YY bee->y
 #define XX bee->bx
 #define MAX(a,b) ((a)>(b)?(a):(b))
@@ -83,11 +84,22 @@ void string_init(struct string *s){
   s->p = calloc(s->cap+1, sizeof(char));
 }
 
-void string_destroy(struct string *s){
+void string_deinit(struct string *s){
   free(s->p);
   s->p = NULL;
   s->cap = 0;
   s->len = 0;
+}
+
+struct string *string_create(){
+  struct string *s = malloc(sizeof(struct string));
+  string_init(s);
+  return s;
+}
+
+void string_destroy(struct string *s){
+  string_deinit(s);
+  free(s);
 }
 
 void string_append(struct string *s, const char *t){
@@ -119,7 +131,7 @@ struct text text_from_string(struct string *str, int nlines){
     s = end+1;
   }
 
-  string_destroy(str);
+  string_deinit(str);
   return retval;
 }
 
@@ -174,6 +186,32 @@ static inline int utf8prev(const char* s, int off){
   while((s[off]&0xC0) == 0x80)
     off--;
   return off;
+}
+
+static inline char *skip_n_col(char *s, int n, int *remainder){
+  *remainder = 0;
+  if(s==NULL || s[0]=='\0') return NULL;
+  while(n > 0){
+    *remainder = n - columnlen(s, 0);
+    n -= columnlen(s, 0);
+    s += bytelen(s);
+    if(*s=='\0') return NULL;
+  }
+  return s;
+}
+
+static inline void vx_to_bx(const char *str, int vxgoal, int *bx, int *vx){
+  *bx = *vx = 0;
+  int bxold;
+  if(*str == '\0') return;
+  while(1){
+    if(str[*bx+bytelen(str+*bx)] == '\0') return;
+    if(*vx == vxgoal) return; 
+    if(*vx+columnlen(str+*bx, *vx) > vxgoal) return;
+    bxold = *bx;
+    *bx += bytelen(str+*bx);
+    *vx += columnlen(str+bxold, *vx);
+  }
 }
 
 void change_stack_destroy(struct change_stack *cs){
@@ -262,18 +300,6 @@ static inline void print_tb(int x, int y, char* c){
   }
 }
 
-static inline char *skip_n_col(char *s, int n, int *remainder){
-  *remainder = 0;
-  if(s==NULL || s[0]=='\0') return NULL;
-  while(n > 0){
-    *remainder = n - columnlen(s, 0);
-    n -= columnlen(s, 0);
-    s += bytelen(s);
-    if(*s=='\0') return NULL;
-  }
-  return s;
-}
-
 static inline void println(int x, int y, char* s, int maxx){
   if(s == NULL) return;
   while(x<maxx && *s != '\0'){
@@ -283,7 +309,8 @@ static inline void println(int x, int y, char* s, int maxx){
   }
 }
 
-const char *footer_format = "<%s>  \"%s\"  [=%d]  L%d C%d";
+const char *FOOTER_FORMAT = "<%s>  \"%s\"  [=%d]  L%d C%d";
+
 static inline void print_footer(const struct bee *bee){
   for(int x=0; x<tb_width(); x++)
     tb_print(x, tb_height()-1, FOOTER_FG, FOOTER_BG, " ");
@@ -294,7 +321,7 @@ static inline void print_footer(const struct bee *bee){
     char *mode = mode_label[bee->mode];
     int buf_len = bee->mode == INSERT ?
       bee->buf.len + bee->y - bee->ins_y : bee->buf.len;
-    tb_printf(0, tb_height() - 1, FOOTER_FG, FOOTER_BG, footer_format,
+    tb_printf(0, tb_height() - 1, FOOTER_FG, FOOTER_BG, FOOTER_FORMAT,
              mode, bee->filename, buf_len, bee->y, bee->vx);
   }
 }
@@ -386,20 +413,6 @@ static inline void print_screen(const struct bee *bee){
   print_margin(bee);
   print_cursor(bee);
   tb_present();
-}
-
- static inline void vx_to_bx(const char *str, int vxgoal, int *bx, int *vx){
-  *bx = *vx = 0;
-  int bxold;
-  if(*str == '\0') return;
-  while(1){
-    if(str[*bx+bytelen(str+*bx)] == '\0') return;
-    if(*vx == vxgoal) return; 
-    if(*vx+columnlen(str+*bx, *vx) > vxgoal) return;
-    bxold = *bx;
-    *bx += bytelen(str+*bx);
-    *vx += columnlen(str+bxold, *vx);
-  }
 }
 
 //static inline void bx_to_vx(const char *str, int vxgoal, int *bx, int *vx){}
@@ -778,7 +791,7 @@ static inline void bee_init(struct bee *bee){
 
 static inline void bee_destroy(struct bee *bee){
   for(int i=0; i<bee->buf.len; i++)
-    string_destroy(&bee->buf.p[i]);
+    string_deinit(&bee->buf.p[i]);
   free(bee->buf.p);
   if(bee->filename)
     free(bee->filename);
@@ -809,10 +822,6 @@ int main(int argc, char **argv){
   tb_set_clear_attrs(FG_COLOR, BG_COLOR);
   //tb_set_input_mode(TB_INPUT_ESC); // default
   //tb_set_input_mode(TB_INPUT_ALT);
-
-  //do {
-  //  print_screen(&bee);
-  //} while(read_key(&bee));
 
   while(!bee.quit){
     print_screen(&bee);
