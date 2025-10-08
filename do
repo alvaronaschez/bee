@@ -1,22 +1,53 @@
 #!/bin/sh
+
+# set -x # echo on
+
 CC=cc
 STD=c99
 CFLAGS="-std=$STD -Wall -Wextra -pedantic"
 
-if [ "$#" -eq 0 ] || [ "$1" = 'build' ]; then
+build()
+{
   $CC $CFLAGSS -c text.c -o obj/text.o
   $CC $CFLAGS bee.c obj/*.o -o bee
-elif [ "$1" = 'clean' ]; then
+}
+
+build_debug()
+{
+  CFLAGS="$CFLAGS -g3"
+  build
+}
+
+clean()
+{
   rm bee
-elif [ "$1" = 'build-debug' ]; then
-  $CC $CFLAGSS -g3 -c text.c -o obj/text.o
-  $CC $CFLAGS -g3 bee.c obj/*.o -o bee 
-elif [ "$1" = 'debug' ]; then
+  rm obj/*
+  rm out/*
+}
+
+debug()
+{
   gdb -tui -p $(pgrep bee)
-elif [ "$1" = 'test' ]; then
+}
+
+test()
+{
   cc -c text.c -o obj/text.o
   cc test_text.c obj/*.o -o out/test_text
   ./out/test_text
+}
+
+
+if [ "$#" -eq 0 ] || [ "$1" = 'build' ]; then
+  build
+elif [ "$1" = 'build-debug' ]; then
+  build_debug
+elif [ "$1" = 'clean' ]; then
+  clean
+elif [ "$1" = 'debug' ]; then
+  debug
+elif [ "$1" = 'test' ]; then
+  test
 else
   echo ERROR: unknown argument
 fi

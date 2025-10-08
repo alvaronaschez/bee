@@ -1,3 +1,4 @@
+- fix file permissions changed after editing
 - yank/paste
 - search
 - tests (wip)
