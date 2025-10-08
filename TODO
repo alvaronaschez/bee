@@ -1,9 +1,8 @@
-- alert messages
-- undo/redo (wip - almost done, review cursor/scroll position after undo/redo)
-- tests (wip)
-- resize
-- search
 - yank/paste
+- search
+- tests (wip)
+- alert messages
+- resize
 - visual mode
 - open non existing file
 
