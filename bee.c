@@ -214,7 +214,7 @@ static inline void vx_to_bx(const char *str, int vxgoal, int *bx, int *vx){
   }
 }
 
-void change_stack_destroy(struct change_stack *cs){
+static inline void change_stack_destroy(struct change_stack *cs){
   struct change_stack *aux;
   while(cs){
     aux = cs->next;
@@ -803,18 +803,13 @@ static inline void bee_destroy(struct bee *bee){
   change_stack_destroy(bee->redo_stack);
 }
 
-int main(int argc, char **argv){
-  if(argc < 2){
-    printf("missing file name\naborting\n");
-    return 1;
-  }
-
+int bee(char* filename){
   setlocale(LC_CTYPE, LOCALE);
 
   struct bee bee;
   bee_init(&bee);
 
-  bee.filename = realpath(argv[1], NULL);
+  bee.filename = realpath(filename, NULL);
   if(bee.filename == NULL) {
     printf("wrong file name\naborting\n");
     return 1;
@@ -836,4 +831,13 @@ int main(int argc, char **argv){
   bee_destroy(&bee);
 
   return 0;
+}
+
+int main(int argc, char **argv){
+  if(argc < 2){
+    printf("missing file name\naborting\n");
+    return 1;
+  }
+
+  return bee(argv[1]);
 }
