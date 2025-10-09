@@ -1,6 +1,5 @@
 - manage several buffers
 - $ _ ^ D I A X C
-- fix file permissions changed after editing
 - yank/paste
 - search
 - tests (wip)

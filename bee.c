@@ -79,7 +79,7 @@ struct bee {
 };
 
 void string_init(struct string *s){
-  s->cap = 64;
+  s->cap = 8;
   s->len = 0;
   s->p = calloc(s->cap+1, sizeof(char));
 }
@@ -275,6 +275,8 @@ static inline struct string *load_file(const char *filename, int *len){
 }
 
 static inline void save_file(const struct text *txt, const char *filename){
+  struct stat st;
+  assert(0==stat(filename, &st));
   char *tmp = malloc(strlen(filename)+strlen(".bee.bak")+1);
   sprintf(tmp, "%s.bee.bak", filename);
   assert(0==rename(filename, tmp));
@@ -282,6 +284,8 @@ static inline void save_file(const struct text *txt, const char *filename){
   assert(f);
   for(int i=0; i<txt->len; i++)
     fprintf(f, "%s\n", txt->p[i].p);
+  chmod(filename, st.st_mode);
+  chown(filename, st.st_uid, st.st_gid);
   assert(0==fclose(f));
   assert(0==remove(tmp));
   free(tmp);
