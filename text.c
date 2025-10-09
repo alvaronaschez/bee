@@ -14,7 +14,7 @@ static inline struct delete_cmd insert_cmd_inverse(const struct text*, const str
 struct delete_cmd text_insert(struct text *txt, struct insert_cmd cmd) {
   int x = cmd.x; int y = cmd.y; struct text ntxt = cmd.txt;
   int yy = y+ntxt.len-1;
-  int xx = ntxt.p[ntxt.len-1].len-1 + (y==yy? x : 0);
+  //int xx = ntxt.p[ntxt.len-1].len-1 + (y==yy? x : 0);
 
   // backup the rest of the insertion line for later
   int aux_len = txt->p[y].len - x;

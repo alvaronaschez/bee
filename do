@@ -6,10 +6,14 @@ CC=cc
 STD=c99
 CFLAGS="-std=$STD -Wall -Wextra -pedantic"
 
+SOURCES="text.c bee.c"
+
 build()
 {
-  $CC $CFLAGSS -c text.c -o obj/text.o
-  $CC $CFLAGS bee.c obj/*.o -o bee
+  for f in $SOURCES; do
+    $CC $CFLAGS -c $f -o "obj/${f%.c}.o"
+  done
+  $CC $CFLAGS main.c obj/*.o -o bee
 }
 
 build_debug()

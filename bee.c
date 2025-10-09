@@ -1,218 +1,27 @@
+#include "bee.h"
+
+#include "tb2.h"
+
+// realpath
+#ifndef _XOPEN_SOURCE
+#define _XOPEN_SOURCE 500
+#endif
+
+#include "text_util.h"
 #include "text.h"
-#define TB_IMPL
-#include "termbox2.h"
+
+#include "file.h"
 
 #include <assert.h>
 #include <stdio.h>
+#include <limits.h>
 #include <stdlib.h>
 #include <string.h>
 #include <wchar.h>
 #include <locale.h>
 #include <libgen.h>
 
-#define LOCALE "en_US.UTF-8"
-#define FG_COLOR TB_WHITE
-#define BG_COLOR TB_BLACK
-#define TAB_LEN 8
-#define FOOTER_HEIGHT 1
-#define FOOTER_FG TB_MAGENTA
-#define FOOTER_BG TB_BLACK
-#define MARGIN_LEN 4
-#define MARGIN_FG TB_MAGENTA
-#define MARGIN_BG TB_BLACK
-#define SCREEN_HEIGHT (tb_height() - FOOTER_HEIGHT)
-#define SCREEN_WIDTH (tb_width())
-
-#define YY bee->y
-#define XX bee->bx
-#define MAX(a,b) ((a)>(b)?(a):(b))
-#define MIN(a,b) ((a)<(b)?(a):(b))
-#define ABS(a) ((a)>=0?(a):-(a))
-
-//#define DEBUG
-#ifdef DEBUG
-#include <time.h>
-inline static void flog(const char *msg){
-  time_t t = time(NULL);
-  FILE *f = fopen("./bee.log", "a");
-  fprintf(f, "%s - %s\n", ctime(&t), msg);
-  assert(0 == fclose(f));
-}
-#else
-inline static void flog(const char *msg){}
-#endif
-
-enum mode {
-  NORMAL, INSERT, COMMAND
-};
-
-char *mode_label[] = {"N", "I", "C"};
-
-enum operation { INS, DEL};
-struct change_stack{
-  int y, bx, vx, leftcol, toprow;
-  struct change_stack *next;
-  enum operation op;
-  union {
-    struct insert_cmd i;
-    struct delete_cmd d;
-  } cmd;
-};
-
-struct bee {
-  enum mode mode;
-  struct text buf;
-  char *filename;
-
-  int toprow, leftcol;
-  int y, bx, vx, vxgoal;
-
-  struct string ins_buf;
-  int ins_y, ins_bx, ins_vx;
-  int ins_toprow, ins_leftcol;
-
-  struct string cmd_buf;
-
-  struct change_stack *undo_stack, *redo_stack;
-
-  char quit;
-};
-
-void string_init(struct string *s){
-  s->cap = 8;
-  s->len = 0;
-  s->p = calloc(s->cap+1, sizeof(char));
-}
-
-void string_deinit(struct string *s){
-  free(s->p);
-  s->p = NULL;
-  s->cap = 0;
-  s->len = 0;
-}
-
-struct string *string_create(){
-  struct string *s = malloc(sizeof(struct string));
-  string_init(s);
-  return s;
-}
-
-void string_destroy(struct string *s){
-  string_deinit(s);
-  free(s);
-}
-
-void string_append(struct string *s, const char *t){
-  if(s->len + (int)strlen(t) > s->cap)
-    s->p = realloc(s->p, s->cap*=2);
-  strcat(s->p + s->len, t);
-  s->len += strlen(t);
-}
-
-/**
- * @brief Splits a string with linesbreak into a text struct
- *
- * @warning Takes ownership of `str`.
- * The caller must not use or free `str` after this call.
- */
-struct text text_from_string(struct string *str, int nlines){
-  struct text retval;
-  char *s = str->p;
-  retval.p = malloc(nlines*sizeof(struct string));
-  retval.len = nlines;
-
-  for(int i=0; i<nlines; i++){
-    char *end = strchr(s, '\n');
-    end = end ? end : s + strlen(s);
-    retval.p[i].p = malloc(end-s+1);
-    memcpy(retval.p[i].p, s, end-s);
-    retval.p[i].p[end-s] = '\0'; // null terminated string
-    retval.p[i].cap = retval.p[i].len = end-s;
-    s = end+1;
-  }
-
-  string_deinit(str);
-  return retval;
-}
-
-#define bytelen utf8len
-static inline int utf8len(const char* s){
-  if((s[0]&0x80) == 0x00) return 1; // 0xxx_xxxx
-  if((s[0]&0xE0) == 0xC0) return 2; // 110x_xxxx 10xx_xxxx
-  if((s[0]&0xF0) == 0xE0) return 3; // 1110_xxxx 10xx_xxxx 10xx_xxxx
-  if((s[0]&0xF8) == 0xF0) return 4; // 1111_0xxx 10xx_xxxx  10xx_xxxx 10xx_xxxx
-  return 0;
-}
-
-static inline int columnlen(const char* s, int col_off){
-  // we need to know the col_off in order to compute the length of the tab char
-  if(*s=='\t')
-    return TAB_LEN-col_off%TAB_LEN;
-  wchar_t wc;
-  mbtowc(&wc, s, MB_CUR_MAX);
-  int width = wcwidth(wc);
-  assert(width>=0); // -1 -> invalid utf8 char
-  return 1;
-}
-
-static inline int utf8prevn(const char* s, int off, int n);
-static inline int utf8nextn(const char* s, int off, int n){
-  if(n<0) return utf8prevn(s, off, -n);
-  int len;
-  for(; n>0; n--){
-    len = utf8len(s+off);
-    if(len == -1) return -1;
-    if(s[off+len] == '\0') return off;
-    off+=len;
-  }
-  return off;
-}
-static inline int utf8next(const char* s, int off){
-  return utf8nextn(s, off, 1);
-}
-static inline int utf8prevn(const char* s, int off, int n){
-  if(n<0) return utf8nextn(s, off, -n);
-  int i;
-  for(; n>0; n--){
-    for(i=0; i<4 && (s[off]&0xC0)==0x80; off--, i++);
-    if(utf8len(s+off) == 0) return -1;
-    if(off == 0) return 0;
-  }
-  return off;
-}
-static inline int utf8prev(const char* s, int off){
-  if(*s == '\0') return 0;
-  off--;
-  while((s[off]&0xC0) == 0x80)
-    off--;
-  return off;
-}
-
-static inline char *skip_n_col(char *s, int n, int *remainder){
-  *remainder = 0;
-  if(s==NULL || s[0]=='\0') return NULL;
-  while(n > 0){
-    *remainder = n - columnlen(s, 0);
-    n -= columnlen(s, 0);
-    s += bytelen(s);
-    if(*s=='\0') return NULL;
-  }
-  return s;
-}
-
-static inline void vx_to_bx(const char *str, int vxgoal, int *bx, int *vx){
-  *bx = *vx = 0;
-  int bxold;
-  if(*str == '\0') return;
-  while(1){
-    if(str[*bx+bytelen(str+*bx)] == '\0') return;
-    if(*vx == vxgoal) return; 
-    if(*vx+columnlen(str+*bx, *vx) > vxgoal) return;
-    bxold = *bx;
-    *bx += bytelen(str+*bx);
-    *vx += columnlen(str+bxold, *vx);
-  }
-}
+const char *mode_label[3] = {"N", "I", "C"};
 
 static inline void change_stack_destroy(struct change_stack *cs){
   struct change_stack *aux;
@@ -226,69 +35,6 @@ static inline void change_stack_destroy(struct change_stack *cs){
     free(cs);
     cs = aux;
   }
-}
-
-static inline struct string *load_file(const char *filename, int *len){
-  if (filename == NULL) return 0;
-  FILE *fp = fopen(filename, "r");
-  assert(fp);
-  int res = fseek(fp, 0, SEEK_END);
-  assert(res == 0);
-  long fsize = ftell(fp);
-  assert(fsize >= 0);
-  if(fsize==0){
-    *len = 1;
-    struct string *retval = malloc(sizeof(struct string));
-    retval[0].cap = retval[0].len = 0;
-    retval[0].p = calloc(1,1);
-    return retval;
-  }
-  rewind(fp);
-  char *fcontent = (char*) malloc(fsize * sizeof(char));
-  fread(fcontent, 1, fsize, fp);
-  res = fclose(fp);
-  assert(res == 0);
-  // count lines in file
-  int nlines = 0;
-  for(int i = 0; i<fsize; i++)
-    if(fcontent[i] == '\n') nlines++;
-  if(fcontent[fsize-1] != '\n')
-    nlines++;
-  *len = nlines;
-  // copy all lines from fcontent into buf
-  struct string *buf = malloc(nlines * sizeof(struct string));
-  int linelen;
-  for(int i = 0, j = 0; i<nlines && j<fsize; i++){
-    // count line length
-    for(linelen = 0; j+linelen<fsize-1 && fcontent[j+linelen]!='\n'; linelen++);
-    // copy line in buffer
-    buf[i].p = calloc(linelen+1, sizeof(char));
-    if(linelen>0)
-      memcpy(buf[i].p , &fcontent[j], linelen);
-    buf[i].len = buf[i].cap = linelen;
-
-    j += linelen+1;
-  }
-  free(fcontent);
-  // calle should free buf
-  return buf;
-}
-
-static inline void save_file(const struct text *txt, const char *filename){
-  struct stat st;
-  assert(0==stat(filename, &st));
-  char *tmp = malloc(strlen(filename)+strlen(".bee.bak")+1);
-  sprintf(tmp, "%s.bee.bak", filename);
-  assert(0==rename(filename, tmp));
-  FILE *f = fopen(filename, "a");
-  assert(f);
-  for(int i=0; i<txt->len; i++)
-    fprintf(f, "%s\n", txt->p[i].p);
-  chmod(filename, st.st_mode);
-  chown(filename, st.st_uid, st.st_gid);
-  assert(0==fclose(f));
-  assert(0==remove(tmp));
-  free(tmp);
 }
 
 static inline void print_tb(int x, int y, char* c){
@@ -319,10 +65,11 @@ static inline void print_footer(const struct bee *bee){
   for(int x=0; x<tb_width(); x++)
     tb_print(x, tb_height()-1, FOOTER_FG, FOOTER_BG, " ");
   
+  const char *mode = mode_label[bee->mode];
+
   if(bee->mode == COMMAND){
     tb_printf(0, tb_height() - 1, FOOTER_FG, FOOTER_BG, "<C>  %s", bee->cmd_buf.p);
   } else {
-    char *mode = mode_label[bee->mode];
     int buf_len = bee->mode == INSERT ?
       bee->buf.len + bee->y - bee->ins_y : bee->buf.len;
     tb_printf(0, tb_height() - 1, FOOTER_FG, FOOTER_BG, FOOTER_FORMAT,
@@ -418,8 +165,6 @@ static inline void print_screen(const struct bee *bee){
   print_cursor(bee);
   tb_present();
 }
-
-//static inline void bx_to_vx(const char *str, int vxgoal, int *bx, int *vx){}
 
 static inline void autoscroll_x(struct bee *bee){
   // cursor too far to the right
@@ -546,9 +291,6 @@ static inline void n_colon(struct bee *bee){
   bee->mode = COMMAND;
 }
 
-static inline void resize(const struct bee *bee){
-}
-
 static inline void bee_save_cursor(const struct bee*bee, struct change_stack *ch){
   ch->y = bee->y; ch->bx = bee->bx; ch->vx = bee->vx;
   ch->toprow = bee->toprow; ch->leftcol = bee->leftcol;
@@ -623,7 +365,7 @@ static inline void bee_redo(struct bee *bee){
 static inline void normal_read_key(struct bee *bee){
   struct tb_event ev;
   tb_poll_event(&ev);
-  if(ev.type == TB_EVENT_RESIZE) resize(bee);
+  if(ev.type == TB_EVENT_RESIZE) return;
   else if(ev.ch!=0) switch(ev.ch){
   case 'Z':
     tb_poll_event(&ev);
@@ -697,7 +439,7 @@ static inline void i_backspace(struct bee *bee){
 static inline void insert_read_key(struct bee *bee){
   struct tb_event ev;
   tb_poll_event(&ev);
-  if(ev.type == TB_EVENT_RESIZE) resize(bee);
+  if(ev.type == TB_EVENT_RESIZE) return;
   else if(ev.key!=0) switch(ev.key){
     case TB_KEY_ESC:
       i_esc(bee); break;
@@ -751,7 +493,7 @@ static inline void c_enter(struct bee *bee){
 static inline void command_read_key(struct bee *bee){
   struct tb_event ev;
   tb_poll_event(&ev);
-  if(ev.type == TB_EVENT_RESIZE) resize(bee);
+  if(ev.type == TB_EVENT_RESIZE) return;
   else if(ev.key!=0) switch(ev.key){
   case TB_KEY_ESC:
     c_esc(bee); break;
@@ -803,7 +545,7 @@ static inline void bee_destroy(struct bee *bee){
   change_stack_destroy(bee->redo_stack);
 }
 
-int bee(char* filename){
+int bee(const char* filename){
   setlocale(LC_CTYPE, LOCALE);
 
   struct bee bee;
@@ -833,11 +575,3 @@ int bee(char* filename){
   return 0;
 }
 
-int main(int argc, char **argv){
-  if(argc < 2){
-    printf("missing file name\naborting\n");
-    return 1;
-  }
-
-  return bee(argv[1]);
-}
