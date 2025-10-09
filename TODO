@@ -1,3 +1,5 @@
+- manage several buffers
+- $ _ ^ D I A X C
 - fix file permissions changed after editing
 - yank/paste
 - search
@@ -12,6 +14,7 @@
   d D i I c C a A
   x X
   zz z<CR>
+  C-d C-u
   #gg #G :#
   gh gj gk gl
   f t F T %

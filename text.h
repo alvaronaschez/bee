@@ -2,7 +2,7 @@
 #define BEE_TEXT_H
 
 struct string {
-  char *p;
+  char *p; // null terminated
   int len, cap;
 };
 

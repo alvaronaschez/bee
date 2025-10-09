@@ -6,58 +6,9 @@
 #define MAX(a,b) ((a)>(b)?(a):(b))
 #define MIN(a,b) ((a)<(b)?(a):(b))
 
-static inline struct insert_cmd delete_cmd_inverse(const struct text *txt, const struct delete_cmd *cmd) {
-  int x = cmd->x; int y = cmd->y; int xx = cmd->xx; int yy = cmd->yy;
-  struct insert_cmd ret;
-  ret.x = x; ret.y = y;
 
-  // copy all lines involved
-  int extra_line = xx == txt->p[yy].len && yy<txt->len-1 ? 1:0; 
-  int len = ret.txt.len =  yy - y + 1 + extra_line;
-  ret.txt.p = malloc(len*sizeof(struct string));
-  for(int i=0; i<len-extra_line; i++){
-    ret.txt.p[i].p = malloc(txt->p[y+i].len +1);
-    strcpy(ret.txt.p[i].p, txt->p[y+i].p);
-    ret.txt.p[i].len = txt->p[y+i].len;
-    ret.txt.p[i].cap = txt->p[y+i].cap;
-  }
-  if(extra_line){
-    ret.txt.p[len-1].p = calloc(1,1);
-    ret.txt.p[len-1].len = ret.txt.p[len-1].cap = 0;
-  }
-
-  // delete parts we don't need
-  // first line
-  char *aux = ret.txt.p[0].p;
-  ret.txt.p[0].len -= x;
-  ret.txt.p[0].cap = ret.txt.p[0].len;
-  ret.txt.p[0].p = malloc(ret.txt.p[0].len+1);
-  strcpy(ret.txt.p[0].p, &aux[x]);
-  free(aux);
-  // last line
-  if(!extra_line){
-    if(y==yy) xx -= x;
-    int xxx = MIN(xx+1, ret.txt.p[len-1].len);
-    ret.txt.p[len-1].p = realloc(ret.txt.p[len-1].p, xxx+1);
-    ret.txt.p[len-1].p[xxx] = '\0';
-    ret.txt.p[len-1].len = xxx;
-    ret.txt.p[len-1].cap = ret.txt.p[len-1].len;
-  }
-
-  return ret;
-}
-
-static inline struct delete_cmd insert_cmd_inverse(const struct text *txt, const struct insert_cmd *cmd) {
-  struct text ntxt = cmd->txt;
-  int x = cmd->x; int y = cmd->y;
-  int yy = y + ntxt.len-1;
-  int xx = ntxt.p[ntxt.len-1].len -1 + (y==yy? x: 0);
-  if(xx == -1){
-    yy--;
-    xx = txt->p[yy].len;
-  }
-  return (struct delete_cmd){.x = x, .y = y, .xx = xx, .yy = yy};
-}
+static inline struct insert_cmd delete_cmd_inverse(const struct text*, const struct delete_cmd*);
+static inline struct delete_cmd insert_cmd_inverse(const struct text*, const struct insert_cmd*);
 
 // takes ownership of cmd.txt
 struct delete_cmd text_insert(struct text *txt, struct insert_cmd cmd) {
@@ -114,7 +65,7 @@ struct insert_cmd text_delete(struct text *txt, const struct delete_cmd cmd) {
   if(xx == txt->p[yy].len){
     yy++;
     xx=-1;
-  } 
+  }
 
   int len_a = x;
   int len_b = (txt->p[yy].len - 1 - xx);
@@ -150,5 +101,58 @@ struct insert_cmd text_delete(struct text *txt, const struct delete_cmd cmd) {
   }
 
   return retval;
+}
+
+static inline struct insert_cmd delete_cmd_inverse(const struct text *txt, const struct delete_cmd *cmd) {
+  int x = cmd->x; int y = cmd->y; int xx = cmd->xx; int yy = cmd->yy;
+  struct insert_cmd ret;
+  ret.x = x; ret.y = y;
+
+  // copy all lines involved
+  int extra_line = xx == txt->p[yy].len && yy<txt->len-1 ? 1:0;
+  int len = ret.txt.len =  yy - y + 1 + extra_line;
+  ret.txt.p = malloc(len*sizeof(struct string));
+  for(int i=0; i<len-extra_line; i++){
+    ret.txt.p[i].p = malloc(txt->p[y+i].len +1);
+    strcpy(ret.txt.p[i].p, txt->p[y+i].p);
+    ret.txt.p[i].len = txt->p[y+i].len;
+    ret.txt.p[i].cap = txt->p[y+i].cap;
+  }
+  if(extra_line){
+    ret.txt.p[len-1].p = calloc(1,1);
+    ret.txt.p[len-1].len = ret.txt.p[len-1].cap = 0;
+  }
+
+  // delete parts we don't need
+  // first line
+  char *aux = ret.txt.p[0].p;
+  ret.txt.p[0].len -= x;
+  ret.txt.p[0].cap = ret.txt.p[0].len;
+  ret.txt.p[0].p = malloc(ret.txt.p[0].len+1);
+  strcpy(ret.txt.p[0].p, &aux[x]);
+  free(aux);
+  // last line
+  if(!extra_line){
+    if(y==yy) xx -= x;
+    int xxx = MIN(xx+1, ret.txt.p[len-1].len);
+    ret.txt.p[len-1].p = realloc(ret.txt.p[len-1].p, xxx+1);
+    ret.txt.p[len-1].p[xxx] = '\0';
+    ret.txt.p[len-1].len = xxx;
+    ret.txt.p[len-1].cap = ret.txt.p[len-1].len;
+  }
+
+  return ret;
+}
+
+static inline struct delete_cmd insert_cmd_inverse(const struct text *txt, const struct insert_cmd *cmd) {
+  struct text ntxt = cmd->txt;
+  int x = cmd->x; int y = cmd->y;
+  int yy = y + ntxt.len-1;
+  int xx = ntxt.p[ntxt.len-1].len -1 + (y==yy? x: 0);
+  if(xx == -1){
+    yy--;
+    xx = txt->p[yy].len;
+  }
+  return (struct delete_cmd){.x = x, .y = y, .xx = xx, .yy = yy};
 }
 
