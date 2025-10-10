@@ -6,7 +6,7 @@ CC=cc
 STD=c99
 CFLAGS="-std=$STD -Wall -Wextra -pedantic -D_XOPEN_SOURCE -D_DEFAULT_SOURCE"
 
-SOURCES="text.c bee.c"
+SOURCES="text.c text_util.c bee.c print.c"
 
 build()
 {
