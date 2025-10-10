@@ -269,9 +269,6 @@ static inline void i_esc(struct bee *bee){
     bee->mode = NORMAL;
     return;
   }
-  change_stack_destroy(bee->redo_stack);
-  bee->redo_stack = NULL;
-  struct change_stack *old_undo_stack = bee->undo_stack;
 
   int num_lines_inserted = bee->y - bee->ins_y;
   int num_lines_ins_buf = num_lines_inserted +1;
@@ -284,8 +281,13 @@ static inline void i_esc(struct bee *bee){
     .leftcol=bee->leftcol, .toprow=bee->toprow,
     .op = DEL,
   };
+
   change->cmd.d = text_insert(&bee->buf, 
       (struct insert_cmd){.x=bee->ins_bx, .y=bee->ins_y, .txt=inserted_lines});
+
+  change_stack_destroy(bee->redo_stack);
+  bee->redo_stack = NULL;
+  struct change_stack *old_undo_stack = bee->undo_stack;
   bee->undo_stack = change;
   bee->undo_stack->next = old_undo_stack;
 

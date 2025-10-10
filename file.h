@@ -70,4 +70,3 @@ static inline void save_file(const struct text *txt, const char *filename){
   free(tmp);
 }
 
-
