@@ -3,10 +3,6 @@
 
 #include "bee.h"
 
-#ifndef _XOPEN_SOURCE
-#define _XOPEN_SOURCE
-#endif
-
 #include <stdlib.h>
 #include <string.h>
 #include <wchar.h>

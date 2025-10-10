@@ -13,6 +13,7 @@
 #define MARGIN_LEN 4
 #define MARGIN_FG TB_MAGENTA
 #define MARGIN_BG TB_BLACK
+
 #define SCREEN_HEIGHT (tb_height() - FOOTER_HEIGHT)
 #define SCREEN_WIDTH (tb_width())
 

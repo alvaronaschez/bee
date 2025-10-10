@@ -1,15 +1,10 @@
 #include "bee.h"
 
-#include "tb2.h"
-
-// realpath
-#ifndef _XOPEN_SOURCE
-#define _XOPEN_SOURCE 500
-#endif
+#define TB_IMPL
+#include "termbox2.h"
 
 #include "text_util.h"
 #include "text.h"
-
 #include "file.h"
 
 #include <assert.h>
