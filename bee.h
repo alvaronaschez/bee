@@ -15,10 +15,10 @@
 #define MARGIN_BG TB_BLACK
 
 #define SCREEN_HEIGHT (tb_height() - FOOTER_HEIGHT)
-#define SCREEN_WIDTH (tb_width())
+#define SCREEN_WIDTH (tb_width() - MARGIN_LEN)
 
-#define YY bee->y
-#define XX bee->bx
+#define YY (bee->y)
+#define XX (bee->bx)
 #define MAX(a,b) ((a)>(b)?(a):(b))
 #define MIN(a,b) ((a)<(b)?(a):(b))
 #define ABS(a) ((a)>=0?(a):-(a))
@@ -31,7 +31,7 @@ extern const char *mode_label[3];
 
 enum operation {INS, DEL};
 struct change_stack{
-  int y, bx, vx, leftcol, toprow;
+  int y, bx, vx;
   struct change_stack *next;
   enum operation op;
   union {
@@ -45,12 +45,11 @@ struct bee {
   struct text buf;
   char *filename;
 
-  int toprow, leftcol;
   int y, bx, vx, vxgoal;
 
-  struct string ins_buf;
+  //struct string ins_buf;
+  struct text ins_buf;
   int ins_y, ins_bx, ins_vx;
-  int ins_toprow, ins_leftcol;
 
   struct string cmd_buf;
 
