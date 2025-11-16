@@ -4,7 +4,9 @@
 
 CC=cc
 STD=c99
-CFLAGS="-std=$STD -Wall -Wextra -pedantic -D_XOPEN_SOURCE -D_DEFAULT_SOURCE"
+#CFLAGS="-std=$STD -Wall -Wextra -pedantic -D_XOPEN_SOURCE=700 -D_DEFAULT_SOURCE"
+# use the following instead, for bsd compatibility
+CFLAGS="-std=$STD -Wall -Wextra -pedantic -D_XOPEN_SOURCE=700 -D_BSD_SOURCE"
 
 SOURCES="text.c text_util.c bee.c print.c"
 

@@ -27,11 +27,12 @@ static inline char* println_max(int x, int y, char *s, int maxx) {
   return s;
 }
 
-static inline void println(int x, int y, char *s) {
+static inline void println(int xoff, int y, char *s) {
+  int x = 0;
   if (s == NULL)
     return;
   while (*s) {
-    print_tb(x, y, s);
+    print_tb(x + xoff, y, s);
     x += columnlen(s, x);
     s += bytelen(s);
   }
