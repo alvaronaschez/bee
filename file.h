@@ -56,8 +56,9 @@ static inline struct string *load_file(const char *filename, int *len){
 static inline void save_file(const struct text *txt, const char *filename){
   struct stat st;
   assert(0==stat(filename, &st));
-  char *tmp = malloc(strlen(filename)+strlen(".bee.bak")+1);
-  sprintf(tmp, "%s.bee.bak", filename);
+  int n = strlen(filename)+strlen(".bee.bak")+1;
+  char *tmp = malloc(n);
+  snprintf(tmp, n, "%s.bee.bak", filename);
   assert(0==rename(filename, tmp));
   FILE *f = fopen(filename, "a");
   assert(f);

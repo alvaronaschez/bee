@@ -76,16 +76,16 @@ static inline void n_h(struct bee *bee){
   }
   bee->vxgoal = bee->vx;
 }
-static inline void n_l(struct bee *bee){
-  if(bee->bx + bytelen(&bee->buf.p[YY].p[XX]) < bee->buf.p[YY].len){
-  // allow go till the linebreak character
-  //if(bee->bx + bytelen(&bee->buf.p[YY].p[XX]) <= bee->buf.p[YY].len){
-    bee->vx += columnlen(&bee->buf.p[YY].p[XX], bee->vx);
-    bee->bx += bytelen(&bee->buf.p[YY].p[XX]);
-    //autoscroll_x(bee);
-  }
-  bee->vxgoal = bee->vx;
-}
+//static inline void n_l(struct bee *bee){
+//  if(bee->bx + bytelen(&bee->buf.p[YY].p[XX]) < bee->buf.p[YY].len){
+//  // allow go till the linebreak character
+//  //if(bee->bx + bytelen(&bee->buf.p[YY].p[XX]) <= bee->buf.p[YY].len){
+//    bee->vx += columnlen(&bee->buf.p[YY].p[XX], bee->vx);
+//    bee->bx += bytelen(&bee->buf.p[YY].p[XX]);
+//    //autoscroll_x(bee);
+//  }
+//  bee->vxgoal = bee->vx;
+//}
 
 static inline void n_l_pastend(struct bee *bee){
   // you can go past the end of the line so you can append at the end of the line or join lines
@@ -162,10 +162,10 @@ static inline void n_colon(struct bee *bee){
   bee->mode = COMMAND;
 }
 
-static inline void bee_save_cursor(const struct bee*bee, struct change_stack *ch){
-  ch->y = bee->y; ch->bx = bee->bx; ch->vx = bee->vx;
-  //ch->toprow = bee->toprow; ch->leftcol = bee->leftcol;
-}
+//static inline void bee_save_cursor(const struct bee*bee, struct change_stack *ch){
+//  ch->y = bee->y; ch->bx = bee->bx; ch->vx = bee->vx;
+//  //ch->toprow = bee->toprow; ch->leftcol = bee->leftcol;
+//}
 static inline void bee_restore_cursor(struct bee *bee, const struct change_stack *ch){
   bee->y = ch->y; bee->bx = ch->bx; bee->vx = ch->vx;
   //bee->toprow = ch->toprow; bee->leftcol = ch->leftcol;

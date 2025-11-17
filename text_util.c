@@ -121,16 +121,16 @@ void string_append(struct string *s, const char *t){
     s->cap = new_cap;
     s->p = realloc(s->p, s->cap+1);
   }
-  strcat(s->p + s->len, t);
+  strlcat(s->p + s->len, t, new_len + 1);
   s->len = new_len;
 }
 
 void string_prepend(struct string *s, const char *t){
   s->len += strlen(t);
   char *old = s->p;
-  s->p = calloc(1, s->len + 1);
-  strcat(s->p, t);
-  strcat(s->p, old);
+  s->p = calloc(s->len + 1, sizeof(char));
+  strlcat(s->p, t, s->len + 1);
+  strlcat(s->p, old, s->len + 1);
   free(old);
 }
 

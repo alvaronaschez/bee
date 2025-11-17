@@ -11,8 +11,9 @@ struct text *text_from(char **arr, int len){
 
   for(int i=0; i<len; i++){
     t->p[i].len = t->p[i].cap = strlen(arr[i]);
-    t->p[i].p = malloc(t->p[i].len+1);
-    strcpy(t->p[i].p, arr[i]);
+    int l = t->p[i].len+1;
+    t->p[i].p = malloc(l);
+    strlcpy(t->p[i].p, arr[i], l);
   }
   t->len = len;
   return t;
@@ -44,8 +45,10 @@ void test_1(void) {
   struct text *original_t = text_from((char *[]){"Hola", "que", "tal"}, 3);
   struct text *t = text_from((char *[]){"Hola", "que", "tal"}, 3);
   struct text *n = text_from((char *[]){"hoho", "I am Santa!", ""}, 3);
+  struct text *n_cpy = text_from((char *[]){"hoho", "I am Santa!", ""}, 3);
   struct text *expected = text_from((char *[]){"Hohoho", "I am Santa!", "la", "que", "tal"}, 5);
   struct insert_cmd cmd = { .txt = *n, .y = 0, .x = 2 };
+  struct insert_cmd cmd_cpy = { .txt = *n_cpy, .y = 0, .x = 2 };
   struct delete_cmd expected_cmd = {.x=2, .y=0, .xx=11, .yy=1};
 
   struct delete_cmd out_cmd = text_insert(t, cmd); 
@@ -57,7 +60,7 @@ void test_1(void) {
   struct insert_cmd out_cmd2 = text_delete(t, out_cmd);
 
   assert_text_equals(original_t, t);
-  assert_insert_cmd_equals(&out_cmd2, &cmd);
+  assert_insert_cmd_equals(&out_cmd2, &cmd_cpy);
 }
 void test_del1(void){
   struct text *o = text_from((char *[]){"foo", "bar", "jam"}, 3);
@@ -171,6 +174,13 @@ void test_del9(void){
   text_insert(t, ins_cmd);
   assert_text_equals(t, o);
 }
+void test_del10(void){
+  struct text *t = text_from((char *[]){"foo", "Hello blablabla World!", "jam"}, 3);
+  struct text *expected = text_from((char *[]){"foo", "Hello World!", "jam"}, 3);
+  struct delete_cmd del_cmd = {.y=1, .x=6, .yy=1, .xx=15};
+  text_delete(t, del_cmd);
+  assert_text_equals(t, expected);
+}
 
 void test_ins1(void){
   struct text *o = text_from((char *[]){"foo", "bar", "jam"}, 3);
@@ -262,6 +272,7 @@ int main(void) {
   test_del7();
   test_del8();
   test_del9();
+  test_del10();
 
   test_ins1();
   test_ins2();

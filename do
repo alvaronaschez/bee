@@ -43,6 +43,13 @@ test()
   ./out/test_text
 }
 
+test_debug()
+{
+  cc -c -g3 text.c -o obj/text.o
+  cc -g3 test_text.c obj/*.o -o out/test_text
+  gdb ./out/test_text
+}
+
 
 if [ "$#" -eq 0 ] || [ "$1" = 'build' ]; then
   build
@@ -54,6 +61,8 @@ elif [ "$1" = 'debug' ]; then
   debug
 elif [ "$1" = 'test' ]; then
   test
+elif [ "$1" = 'test_debug' ]; then
+  test_debug
 else
   echo ERROR: unknown argument
 fi
