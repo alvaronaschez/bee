@@ -13,7 +13,7 @@ struct text *text_from(char **arr, int len){
     t->p[i].len = t->p[i].cap = strlen(arr[i]);
     int l = t->p[i].len+1;
     t->p[i].p = malloc(l);
-    strlcpy(t->p[i].p, arr[i], l);
+    strcpy(t->p[i].p, arr[i]);
   }
   t->len = len;
   return t;

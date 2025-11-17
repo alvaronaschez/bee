@@ -22,7 +22,7 @@ struct delete_cmd text_insert(struct text *txt, struct insert_cmd cmd) {
   if(aux_len){
     int l = txt->p[y].len - x +1;
     aux = malloc(l);
-    strlcpy(aux, &txt->p[y].p[x], l);
+    strcpy(aux, &txt->p[y].p[x]);
   }
 
   // copy the first line
@@ -30,7 +30,7 @@ struct delete_cmd text_insert(struct text *txt, struct insert_cmd cmd) {
   txt->p[y].len = txt->p[y].cap = x + ntxt.p[0].len;
   int l = txt->p[y].len + 1;
   txt->p[y].p = realloc(txt->p[y].p, l);
-  strlcat(txt->p[y].p, ntxt.p[0].p, l);
+  strcat(txt->p[y].p, ntxt.p[0].p);
 
   // copy rest of lines
   if(ntxt.len > 1){
@@ -47,7 +47,7 @@ struct delete_cmd text_insert(struct text *txt, struct insert_cmd cmd) {
     txt->p[yy].len = txt->p[yy].cap = txt->p[yy].len + aux_len;
     int l = txt->p[yy].len +1;
     txt->p[yy].p = realloc(txt->p[yy].p, l);
-    strlcat(txt->p[yy].p, aux, l);
+    strcat(txt->p[yy].p, aux);
     free(aux);
   }
 
@@ -118,7 +118,7 @@ static inline struct insert_cmd delete_cmd_inverse(const struct text *txt, const
   for(int i=0; i<len-extra_line; i++){
     int l = txt->p[y+i].len +1;
     ret.txt.p[i].p = malloc(l);
-    strlcpy(ret.txt.p[i].p, txt->p[y+i].p, l);
+    strcpy(ret.txt.p[i].p, txt->p[y+i].p);
     ret.txt.p[i].len = txt->p[y+i].len;
     ret.txt.p[i].cap = txt->p[y+i].cap;
   }
@@ -134,7 +134,7 @@ static inline struct insert_cmd delete_cmd_inverse(const struct text *txt, const
   ret.txt.p[0].cap = ret.txt.p[0].len;
   int l = ret.txt.p[0].len+1;
   ret.txt.p[0].p = malloc(l);
-  strlcpy(ret.txt.p[0].p, &aux[x], l);
+  strcpy(ret.txt.p[0].p, &aux[x]);
   free(aux);
   // last line
   if(!extra_line){

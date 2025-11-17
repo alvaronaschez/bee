@@ -16,11 +16,12 @@ static inline void print_tb(int x, int y, char *c) {
   }
 }
 
-static inline char* println_max(int x, int y, char *s, int maxx) {
+static inline char* println_max(int xoff, int y, char *s, int maxx) {
   if (s == NULL)
     return NULL;
+  int x = 0;
   while (x < maxx && *s != '\0') {
-    print_tb(x, y, s);
+    print_tb(x + xoff, y, s);
     x += columnlen(s, x);
     s += bytelen(s);
   }
@@ -28,9 +29,9 @@ static inline char* println_max(int x, int y, char *s, int maxx) {
 }
 
 static inline void println(int xoff, int y, char *s) {
-  int x = 0;
   if (s == NULL)
     return;
+  int x = 0;
   while (*s) {
     print_tb(x + xoff, y, s);
     x += columnlen(s, x);
@@ -119,7 +120,7 @@ struct text string_to_virtual_lines(const struct string s, int line_len) {
     } else {
       ss.len = ss.cap = strlen(c);
       ss.p = malloc(ss.len + 1);
-      strlcpy(ss.p, c, ss.len + 1);
+      strcpy(ss.p, c);
     }
     text_append(&t, ss);
     c = cc;
@@ -137,7 +138,7 @@ struct text get_ins_buf_cpy(const struct bee *bee) {
   s1[xx] = '\0';
   int l = bee->buf.p[yy].len - xx + 1;
   char *s2 = malloc(l);
-  strlcpy(s2, &bee->buf.p[yy].p[xx], l);
+  strcpy(s2, &bee->buf.p[yy].p[xx]);
   string_prepend(&ins_buf_cpy.p[0], s1);
   string_append(&ins_buf_cpy.p[ins_buf_cpy.len - 1], s2);
   return ins_buf_cpy;
