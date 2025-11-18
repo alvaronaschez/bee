@@ -157,7 +157,7 @@ bool print_ncol(int x, int y, int n, const char *c);
 bool print_ncol_up(int x, int y, int n, const char *c);
 
 
-void print_screen(const struct bee *bee) {
+void print_screen_old(const struct bee *bee) {
   tb_clear();
 
   if (SCREEN_HEIGHT < 4 || SCREEN_WIDTH < 8) // print nothing
@@ -274,3 +274,44 @@ void print_screen(const struct bee *bee) {
   // print_cursor(bee);
   tb_present();
 }
+
+void print_screen(const struct bee *bee) {
+  tb_clear();
+  char vs[SCREEN_HEIGHT][SCREEN_WIDTH+1]; // virtual screen
+  bool init_line[SCREEN_HEIGHT];
+
+  for(int j=0; j<SCREEN_HEIGHT; j++){
+    vs[j][0] = '\0';
+    init_line[j] = false;
+  }
+
+  int m = SCREEN_HEIGHT - SCREEN_HEIGHT/2 -1;
+
+  // map bottom half of the screen
+  for(int j=m+1, jj=bee->y+1; j<SCREEN_HEIGHT && jj<bee->buf.len;){
+    int n = 0;
+    init_line[j] = true;
+    while(n < bee->buf.p[jj].len && j<SCREEN_HEIGHT) {
+      strlcpy(vs[j], bee->buf.p[jj].p + n, SCREEN_WIDTH+1);
+      n += SCREEN_WIDTH;
+      j++;
+    }
+    jj++;
+  }
+
+  // map insert buffer and insert line
+  // map top half of the screen
+
+  // print
+  for(int j=0, i=1; j<SCREEN_HEIGHT; j++){
+    if(init_line[j]){
+      tb_printf(0, j, MARGIN_FG, MARGIN_BG, "%-3d ", i++);
+    }
+    println(MARGIN_LEN, j, vs[j]);
+  }
+  print_footer(bee);
+  tb_set_cursor((bee->vx % SCREEN_WIDTH) + MARGIN_LEN,
+		SCREEN_HEIGHT - SCREEN_HEIGHT / 2 - 1);
+  tb_present();
+}
+
