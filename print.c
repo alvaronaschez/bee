@@ -278,40 +278,48 @@ void print_screen_old(const struct bee *bee) {
 void print_screen(const struct bee *bee) {
   tb_clear();
   char vs[SCREEN_HEIGHT][SCREEN_WIDTH+1]; // virtual screen
-  bool init_line[SCREEN_HEIGHT];
+  int lidx[SCREEN_HEIGHT];
 
   for(int j=0; j<SCREEN_HEIGHT; j++){
     vs[j][0] = '\0';
-    init_line[j] = false;
+    lidx[j] = -1;
   }
 
   int m = SCREEN_HEIGHT - SCREEN_HEIGHT/2 -1;
 
   // map bottom half of the screen
-  for(int j=m+1, jj=bee->y+1; j<SCREEN_HEIGHT && jj<bee->buf.len;){
-    int n = 0;
-    init_line[j] = true;
-    while(n < bee->buf.p[jj].len && j<SCREEN_HEIGHT) {
-      strlcpy(vs[j], bee->buf.p[jj].p + n, SCREEN_WIDTH+1);
-      n += SCREEN_WIDTH;
+  for(int j=m+1, jj=bee->y+1; j<SCREEN_HEIGHT && jj<bee->buf.len; jj++){
+    lidx[j] = jj-bee->y;
+
+    for(int n = 0; n <= bee->buf.p[jj].len && j<SCREEN_HEIGHT; n+=SCREEN_WIDTH) {
+      strlcpy(vs[j], &bee->buf.p[jj].p[n], SCREEN_WIDTH+1);
       j++;
     }
-    jj++;
   }
 
-  // map insert buffer and insert line
+  // map insert buffer (in insert mode) or current line (otherwise)
+  // TODO
+
   // map top half of the screen
+  for(int j = m, jj=bee->y; j>=0 && jj >=0; jj--){
+    // number of screen lines -1 in file line
+    int n = bee->buf.p[jj].len / SCREEN_WIDTH; 
+    for(; n>=0 && j>=0; n--){
+      strlcpy(vs[j], &bee->buf.p[jj].p[n*SCREEN_WIDTH], SCREEN_WIDTH+1);
+      j--;
+    }
+    if(j+1>=0) lidx[j+1] = bee->y-jj;
+  }
 
   // print
-  for(int j=0, i=1; j<SCREEN_HEIGHT; j++){
-    if(init_line[j]){
-      tb_printf(0, j, MARGIN_FG, MARGIN_BG, "%-3d ", i++);
-    }
+  for(int j=0; j<SCREEN_HEIGHT; j++){
     println(MARGIN_LEN, j, vs[j]);
+    if(lidx[j]>=0)
+      tb_printf(0, j, MARGIN_FG, MARGIN_BG, "%-3d ", lidx[j]);
   }
+
   print_footer(bee);
-  tb_set_cursor((bee->vx % SCREEN_WIDTH) + MARGIN_LEN,
-		SCREEN_HEIGHT - SCREEN_HEIGHT / 2 - 1);
+  tb_set_cursor((bee->vx % SCREEN_WIDTH) + MARGIN_LEN, m);
   tb_present();
 }
 
