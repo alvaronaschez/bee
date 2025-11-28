@@ -146,7 +146,6 @@ static inline void n_i(struct bee *bee){
   string_init(&s);
   text_append(&bee->ins_buf, s);
   //string_init(&bee->ins_buf);
-  bee->ins_y = bee->y; bee->ins_bx = bee->bx; bee->ins_vx = bee->vx;
   //bee->ins_toprow = bee->toprow; bee->ins_leftcol = bee->leftcol;
   bee->mode = INSERT;
 }
@@ -274,26 +273,29 @@ static inline void i_esc(struct bee *bee){
     return;
   }
 
-  //int num_lines_inserted = bee->y - bee->ins_y;
-  //int num_lines_ins_buf = num_lines_inserted +1;
-  //struct text inserted_lines = text_from_string(&bee->ins_buf, num_lines_ins_buf);
-  //bee->ins_buf.len = bee->ins_buf.cap = 0; bee->ins_buf.p = NULL;
+  // TODO // vx?
+  int new_y = bee->y + bee->ins_buf.len-1;
+  int new_bx = bee->ins_buf.p[bee->ins_buf.len-1].len + (bee->ins_buf.len == 1 ? bee->bx : 0);
 
   struct change_stack *change = malloc(sizeof(struct change_stack));
   *change = (struct change_stack){
-    .y = bee->ins_y, .bx = bee->ins_bx, .vx = bee->ins_vx,
-    //.leftcol=bee->leftcol, .toprow=bee->toprow,
+    .y = bee->y, .bx = bee->bx, .vx = bee->vx,
     .op = DEL,
   };
 
   change->cmd.d = text_insert(&bee->buf, 
-      (struct insert_cmd){.x=bee->ins_bx, .y=bee->ins_y, .txt=bee->ins_buf});
+      (struct insert_cmd){.x=bee->bx, .y=bee->y, .txt=bee->ins_buf});
 
   change_stack_destroy(bee->redo_stack);
   bee->redo_stack = NULL;
   struct change_stack *old_undo_stack = bee->undo_stack;
   bee->undo_stack = change;
   bee->undo_stack->next = old_undo_stack;
+
+  // TODO // vx?
+  bee->y = new_y;
+  bee->bx = new_bx;
+  bee->vx = new_bx; // TODO
 
   bee->vxgoal = bee->vx;
   bee->mode = NORMAL;
@@ -308,8 +310,8 @@ static inline void i_backspace(struct bee *bee){
   if(s->len == 0)
     return;
 
-  bee->bx -= bytelen(&s->p[s->len-1]);
-  bee->vx -= columnlen(&s->p[s->len-1], bee->ins_vx);
+  //bee->bx -= bytelen(&s->p[s->len-1]);
+  //bee->vx -= columnlen(&s->p[s->len-1], bee->ins_vx);
   s->len--;
   s->p[s->len] = '\0';
 }
@@ -325,9 +327,10 @@ static inline void insert_read_key(struct bee *bee){
     case TB_KEY_BACKSPACE2:
       i_backspace(bee); break;
     case TB_KEY_ENTER:
-      bee->y++;
-      bee->bx = bee->vx = 0;
+      //bee->y++;
+      //bee->bx = bee->vx = 0;
       //string_append(&bee->ins_buf, "\n");
+      ;
       struct string s;
       string_init(&s);
       text_append(&bee->ins_buf, s); 
@@ -337,8 +340,8 @@ static inline void insert_read_key(struct bee *bee){
     char s[7];
     tb_utf8_unicode_to_char(s, ev.ch);
     string_append(&bee->ins_buf.p[bee->ins_buf.len-1], s);
-    bee->bx += strlen(s);
-    bee->vx += columnlen(s, bee->vx);
+    //bee->bx += strlen(s);
+    //bee->vx += columnlen(s, bee->vx);
   }
 }
 
