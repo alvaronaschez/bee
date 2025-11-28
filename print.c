@@ -289,55 +289,79 @@ void print_screen(const struct bee *bee) {
   bool is_insert_mode = bee->mode == INSERT;
 
   // map insert buffer (in insert mode) or current line (otherwise)
-  // TODO
+  // we distinguish 3 cases:
+  //  1. Not insert mode
+  //  2. Insert mode and only one line in the insert buffer
+  //  3. Insert mode with multiple lines in the insert buffer
   int k1, k2;
   k1 = k2 = 0;
-  if(!is_insert_mode){
-    int nnn = bee->buf.p[bee->y].len / SCREEN_WIDTH;
-    int nn=bee->bx/SCREEN_WIDTH;
-    k1+=nn;
-    k2+=nnn-nn;
-    for(int n=nn-1, j=m-1; n>=0 && j >= 0; n--){
-      if(n==0) lidx[j] = 0;
-      strlcpy(vs[j], &bee->buf.p[bee->y].p[n*SCREEN_WIDTH], SCREEN_WIDTH+1);
-      j--;
-    }
-    for(int n = nn*SCREEN_WIDTH, j=m; n <= bee->buf.p[bee->y].len && j<SCREEN_HEIGHT; n+=SCREEN_WIDTH) {
-      if(n==0) lidx[j] = 0;
-      strlcpy(vs[j], &bee->buf.p[bee->y].p[n], SCREEN_WIDTH+1);
-      j++;
-    }
-  } else if (bee->ins_buf.len == 1){
-    int len = bee->ins_buf.p[0].len+bee->buf.p[bee->y].len;
-    char l[len+1];
-    memcpy(l, bee->buf.p[bee->y].p, bee->ins_bx);
-    memcpy(&l[bee->ins_bx], bee->ins_buf.p[0].p, bee->ins_buf.p[0].len);
-    memcpy(&l[bee->ins_bx+bee->ins_buf.p[0].len], 
-        &bee->buf.p[bee->y].p[bee->ins_bx], 
-        bee->buf.p[bee->y].len - bee->ins_bx);
-    l[len]='\0';
 
-    int nnn = len / SCREEN_WIDTH;
-    int nn=bee->bx/SCREEN_WIDTH;
-    k1+=nn;
-    k2+=nnn-nn;
-    for(int n=nn-1, j=m-1; n>=0 && j >= 0; n--){
-      if(n==0) lidx[j] = 0;
-      strlcpy(vs[j], &l[n*SCREEN_WIDTH], SCREEN_WIDTH+1);
-      j--;
+  char* line = NULL;
+  int len;
+  if(!is_insert_mode){
+    len = bee->buf.p[bee->y].len;
+    line = bee->buf.p[bee->y].p;
+  } else if(bee->ins_buf.len==1){
+    len = bee->ins_buf.p[0].len + bee->buf.p[bee->y].len;
+    line = malloc(len+1);
+    memcpy(line, bee->buf.p[bee->y].p, bee->ins_bx);
+    memcpy(&line[bee->ins_bx], bee->ins_buf.p[0].p, bee->ins_buf.p[0].len);
+    memcpy(&line[bee->ins_bx+bee->ins_buf.p[0].len], 
+      &bee->buf.p[bee->y].p[bee->ins_bx], 
+      bee->buf.p[bee->y].len - bee->ins_bx);
+    line[len]='\0';
+  } else { // (is_insert_mode && bee->ins_buf.len>1)
+    int len1 = bee->ins_buf.p[bee->ins_buf.len-1].len;
+    int len2 = bee->buf.p[bee->ins_y].len - bee->ins_bx;
+    len = len1 + len2;
+    line = malloc(len+1);
+    memcpy(line, bee->ins_buf.p[bee->ins_buf.len-1].p, len1);
+    memcpy(&line[len1], &bee->buf.p[bee->ins_y].p[bee->ins_bx], len2);
+    line[len]='\0';
+  }
+  int nnn = len/SCREEN_WIDTH;
+  int nn=bee->bx/SCREEN_WIDTH;
+  //k1+=nn;
+  k2+=nnn-nn;
+  for(int n=nn-1, j=m-1; n>=0 && j >= 0; n--){
+    if(n==0) lidx[j] = 0;
+    strlcpy(vs[j], &line[n*SCREEN_WIDTH], SCREEN_WIDTH+1);
+    j--;
+    k1++;
+  }
+  for(int n = nn*SCREEN_WIDTH, j=m; n <= len && j<SCREEN_HEIGHT; n+=SCREEN_WIDTH) {
+    if(n==0) lidx[j] = 0;
+    strlcpy(vs[j], &line[n], SCREEN_WIDTH+1);
+    j++;
+  }
+  if(is_insert_mode && bee->ins_buf.len > 1){
+    int first_line_len = bee->ins_bx + bee->ins_buf.p[0].len;
+    char* first_line = malloc(first_line_len+1);
+    memcpy(first_line, bee->buf.p[bee->ins_y].p, bee->ins_bx);
+    memcpy(first_line, bee->ins_buf.p[0].p, bee->ins_buf.p[0].len);
+    first_line[first_line_len] = '\0';
+
+    char *curr_line;
+    for(int j = m-1-k1, jj=bee->ins_buf.len-2; j>=0 && jj >=0; jj--){
+      curr_line = jj == 0 ? first_line : bee->ins_buf.p[jj].p;
+      int len = jj == 0 ? first_line_len : bee->ins_buf.p[jj].len;
+      for(int n=len/SCREEN_WIDTH; n>=0 && j>=0; n--){
+        strlcpy(vs[j], &curr_line[n*SCREEN_WIDTH], SCREEN_WIDTH+1);
+        j--;
+        k1++;
+      }
+      if(j+1>=0) lidx[j+1] = bee->y-jj;
     }
-    for(int n = nn*SCREEN_WIDTH, j=m; n <= len && j<SCREEN_HEIGHT; n+=SCREEN_WIDTH) {
-      if(n==0) lidx[j] = 0;
-      strlcpy(vs[j], &l[n], SCREEN_WIDTH+1);
-      j++;
-    }
-  } else {
-    // TODO
+    free(first_line);
+  }
+  if(is_insert_mode){
+    free(line);
   }
 
   // map bottom half of the screen
-  for(int j=m+1+k2, jj=bee->y+1; j<SCREEN_HEIGHT && jj<bee->buf.len; jj++){
-    lidx[j] = jj-bee->y;
+  int bee_y = is_insert_mode ? bee->ins_y : bee->y; // TODO: we do not need bee->ins_y
+  for(int j=m+1+k2, jj=bee_y+1; j<SCREEN_HEIGHT && jj<bee->buf.len; jj++){
+    lidx[j] = jj-bee_y;
 
     for(int n = 0; n <= bee->buf.p[jj].len && j<SCREEN_HEIGHT; n+=SCREEN_WIDTH) {
       strlcpy(vs[j], &bee->buf.p[jj].p[n], SCREEN_WIDTH+1);
@@ -346,14 +370,14 @@ void print_screen(const struct bee *bee) {
   }
 
   // map top half of the screen
-  for(int j = m-1-k1, jj=bee->y-1; j>=0 && jj >=0; jj--){
+  for(int j = m-1-k1, jj=bee_y-1; j>=0 && jj >=0; jj--){
     // number of screen lines -1 in file line
     int n = bee->buf.p[jj].len / SCREEN_WIDTH; 
     for(; n>=0 && j>=0; n--){
       strlcpy(vs[j], &bee->buf.p[jj].p[n*SCREEN_WIDTH], SCREEN_WIDTH+1);
       j--;
     }
-    if(j+1>=0) lidx[j+1] = bee->y-jj;
+    if(j+1>=0) lidx[j+1] = bee_y-jj;
   }
 
   // print
