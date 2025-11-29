@@ -63,7 +63,7 @@ elif [ "$1" = 'debug' ]; then
   debug
 elif [ "$1" = 'test' ]; then
   test
-elif [ "$1" = 'test_debug' ]; then
+elif [ "$1" = 'test-debug' ]; then
   test_debug
 else
   echo ERROR: unknown argument

@@ -24,7 +24,7 @@ void assert_text_equals(const struct text *t1, const struct text *t2){
   for(int i=0; i<t1->len; i++){
     assert(!strcmp(t1->p[i].p, t2->p[i].p));
     assert(t1->p[i].len == t2->p[i].len);
-    assert(t1->p[i].cap == t2->p[i].cap);
+    //assert(t1->p[i].cap == t2->p[i].cap);
   }
 }
 

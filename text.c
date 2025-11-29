@@ -9,8 +9,8 @@
 
 static void string_init_from_string(struct string* this, const struct string* other){
   this->len = other->len;
-  this->cap = other->len; // reduce capacity
-  this->p = malloc(other->len+1);
+  this->cap = other->cap;
+  this->p = malloc(other->cap+1);
   memcpy(this->p, other->p, other->len+1);
 }
 
@@ -38,12 +38,14 @@ void _text_insert(struct text *txt, const struct insert_cmd cmd) {
 
   // last line
   ntxt.p[ntxt.len-1].len += txt->p[y].len - x;
+  ntxt.p[ntxt.len-1].cap = ntxt.p[ntxt.len-1].len;
   ntxt.p[ntxt.len-1].p = realloc(ntxt.p[ntxt.len-1].p, ntxt.p[ntxt.len-1].len +1);
   strcat(ntxt.p[ntxt.len-1].p, &txt->p[y].p[x]);
 
   // first line
   int old_len = ntxt.p[0].len;
   ntxt.p[0].len += x;
+  ntxt.p[0].cap = ntxt.p[0].len;
   ntxt.p[0].p = realloc(ntxt.p[0].p, ntxt.p[0].len +1);
   memmove(&ntxt.p[0].p[x], ntxt.p[0].p, old_len +1);
   memcpy(ntxt.p[0].p, txt->p[y].p, x);
@@ -52,11 +54,10 @@ void _text_insert(struct text *txt, const struct insert_cmd cmd) {
   free(txt->p[y].p);
   old_len = txt->len;
   txt->len += ntxt.len -1;
-  txt->p = realloc(txt->p, txt->len);
+  txt->p = realloc(txt->p, txt->len*sizeof(struct string));
   // what if y+1 out of bounds??
   if(y<old_len-1)
     memmove(&txt->p[y+ntxt.len], &txt->p[y+1], (old_len-y-1)*sizeof(struct string));
-    //memmove(&txt->p[y+ntxt.len], &txt->p[y+1], txt->len-(y+1));
   memcpy(&txt->p[y], ntxt.p, ntxt.len*sizeof(struct string));
   free(ntxt.p);
 }
@@ -64,7 +65,7 @@ void _text_insert(struct text *txt, const struct insert_cmd cmd) {
 struct delete_cmd text_insert(struct text *txt, struct insert_cmd cmd) {
   _text_insert(txt, cmd);
   struct delete_cmd retval = insert_cmd_inverse(txt, &cmd);
-  text_deinit(&cmd.txt);
+  text_deinit(&cmd.txt); // TODO: this is only for backwards compatibility, get rid of it
   return retval;
 }
 
