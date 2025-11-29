@@ -33,35 +33,6 @@ static inline void change_stack_destroy(struct change_stack *cs){
   }
 }
 
-//static inline void autoscroll_x(struct bee *bee){
-//  // cursor too far to the right
-//  if(bee->vx + columnlen(&bee->buf.p[YY].p[XX], bee->vx) > SCREEN_WIDTH + bee->leftcol - MARGIN_LEN){
-//    int bx_leftcol, vx_leftcol;
-//    vx_to_bx(bee->buf.p[bee->y].p, bee->leftcol, &bx_leftcol, &vx_leftcol);
-//    while(bee->vx + columnlen(&bee->buf.p[YY].p[XX], bee->vx) > SCREEN_WIDTH + bee->leftcol - MARGIN_LEN){
-//      bee->leftcol += columnlen(bee->buf.p[bee->y].p + bx_leftcol, bee->leftcol);
-//      bx_leftcol += bytelen(bee->buf.p[bee->y].p + bx_leftcol);
-//    }
-//  }
-//  // cursor too far to the left
-//  if(bee->vx < bee->leftcol)
-//    bee->leftcol = bee->vx;
-//}
-//
-//static inline void autoscroll_y(struct bee *bee){
-//  // cursor too far up
-//  if(bee->toprow > bee->y)
-//    bee->toprow = bee->y;
-//  // cursor too far down
-//  if(bee->y - bee->toprow >= SCREEN_HEIGHT)
-//    bee->toprow = bee->y-SCREEN_HEIGHT+1;
-//}
-//
-//static inline void autoscroll(struct bee *bee){
-//  autoscroll_y(bee);
-//  autoscroll_x(bee);
-//}
-
 static inline void n_h(struct bee *bee){
   if(bee->bx > 0){
     //vx_to_bx(bee->buf.p[YY].p, bee->vx-1, &bee->bx, &bee->vx);
@@ -76,23 +47,12 @@ static inline void n_h(struct bee *bee){
   }
   bee->vxgoal = bee->vx;
 }
-//static inline void n_l(struct bee *bee){
-//  if(bee->bx + bytelen(&bee->buf.p[YY].p[XX]) < bee->buf.p[YY].len){
-//  // allow go till the linebreak character
-//  //if(bee->bx + bytelen(&bee->buf.p[YY].p[XX]) <= bee->buf.p[YY].len){
-//    bee->vx += columnlen(&bee->buf.p[YY].p[XX], bee->vx);
-//    bee->bx += bytelen(&bee->buf.p[YY].p[XX]);
-//    //autoscroll_x(bee);
-//  }
-//  bee->vxgoal = bee->vx;
-//}
 
 static inline void n_l_pastend(struct bee *bee){
   // you can go past the end of the line so you can append at the end of the line or join lines
   if(bee->bx + bytelen(&bee->buf.p[YY].p[XX]) <= bee->buf.p[YY].len){
     bee->vx += columnlen(&bee->buf.p[YY].p[XX], bee->vx);
     bee->bx += bytelen(&bee->buf.p[YY].p[XX]);
-    //autoscroll_x(bee);
   }
   bee->vxgoal = bee->vx;
 }
@@ -103,8 +63,6 @@ static inline void n_j(struct bee *bee){
 
   // adjust column position
   vx_to_bx(bee->buf.p[YY].p, bee->vxgoal, &bee->bx, &bee->vx);
-
-  //autoscroll(bee);
 }
 static inline void n_k(struct bee *bee){
   if(bee->y == 0) return;
@@ -112,8 +70,6 @@ static inline void n_k(struct bee *bee){
 
   // adjust column position
   vx_to_bx(bee->buf.p[YY].p, bee->vxgoal, &bee->bx, &bee->vx);
-
-  //autoscroll(bee);
 }
 
 static inline void n_x(struct bee *bee){
@@ -124,7 +80,6 @@ static inline void n_x(struct bee *bee){
   struct change_stack *change = malloc(sizeof(struct change_stack));
   *change = (struct change_stack){
     .y = bee->y, .bx = bee->bx, .vx = bee->vx,
-    //.leftcol=bee->leftcol, .toprow=bee->toprow,
     .op = INS,
   };
   int blen =  bytelen(&bee->buf.p[YY].p[XX]);
@@ -146,7 +101,6 @@ static inline void n_i(struct bee *bee){
   string_init(&s);
   text_append(&bee->ins_buf, s);
   //string_init(&bee->ins_buf);
-  //bee->ins_toprow = bee->toprow; bee->ins_leftcol = bee->leftcol;
   bee->mode = INSERT;
 }
 
@@ -161,14 +115,8 @@ static inline void n_colon(struct bee *bee){
   bee->mode = COMMAND;
 }
 
-//static inline void bee_save_cursor(const struct bee*bee, struct change_stack *ch){
-//  ch->y = bee->y; ch->bx = bee->bx; ch->vx = bee->vx;
-//  //ch->toprow = bee->toprow; ch->leftcol = bee->leftcol;
-//}
 static inline void bee_restore_cursor(struct bee *bee, const struct change_stack *ch){
   bee->y = ch->y; bee->bx = ch->bx; bee->vx = ch->vx;
-  //bee->toprow = ch->toprow; bee->leftcol = ch->leftcol;
-  //autoscroll(bee);
 }
 
 /*

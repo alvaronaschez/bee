@@ -43,6 +43,8 @@ test()
   ./out/test_text
 }
 
+# OpenBSD
+# doas sysctl kern.global_ptrace=1
 test_debug()
 {
   cc -c -g3 text.c -o obj/text.o
