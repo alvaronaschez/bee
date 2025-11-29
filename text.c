@@ -39,7 +39,7 @@ void _text_insert(struct text *txt, const struct insert_cmd cmd) {
   // last line
   ntxt.p[ntxt.len-1].len += txt->p[y].len - x;
   ntxt.p[ntxt.len-1].p = realloc(ntxt.p[ntxt.len-1].p, ntxt.p[ntxt.len-1].len +1);
-  strlcat(ntxt.p[ntxt.len-1].p, &txt->p[y].p[x], ntxt.p[ntxt.len-1].len);
+  strcat(ntxt.p[ntxt.len-1].p, &txt->p[y].p[x]);
 
   // first line
   int old_len = ntxt.p[0].len;
@@ -55,7 +55,8 @@ void _text_insert(struct text *txt, const struct insert_cmd cmd) {
   txt->p = realloc(txt->p, txt->len);
   // what if y+1 out of bounds??
   if(y<old_len-1)
-    memmove(&txt->p[y+ntxt.len], &txt->p[y+1], txt->len-(y+1));
+    memmove(&txt->p[y+ntxt.len], &txt->p[y+1], (old_len-y-1)*sizeof(struct string));
+    //memmove(&txt->p[y+ntxt.len], &txt->p[y+1], txt->len-(y+1));
   memcpy(&txt->p[y], ntxt.p, ntxt.len*sizeof(struct string));
   free(ntxt.p);
 }

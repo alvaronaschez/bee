@@ -157,8 +157,8 @@ struct text *text_create(void){
 void text_deinit(struct text *t){
   for(int i=0; i<t->len; i++)
     free(t->p[i].p);
-  if(t->p)
-    free(t->p);
+  free(t->p);
+  t->p = NULL;
   t->len = 0;
 }
 
