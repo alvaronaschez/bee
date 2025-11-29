@@ -49,7 +49,7 @@ test_debug()
 {
   cc -c -g3 text.c -o obj/text.o
   cc -g3 test_text.c obj/*.o -o out/test_text
-  gdb ./out/test_text
+  gdb -tui ./out/test_text
 }
 
 

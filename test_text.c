@@ -260,7 +260,24 @@ void test_ins6(void){
   text_delete(t, del_cmd); 
   assert_text_equals(t, o);
 }
-int main(void) {
+void test_ins7(void){
+  struct text *o = text_from((char *[]){"static inline void change_stack_destroy(struct change_stack *cs){"}, 1);
+  struct text *t = text_from((char *[]){"static inline void change_stack_destroy(struct change_stack *cs){"}, 1);
+  struct text *expected = text_from((char *[]){"static", " inline void change_stack_destroy(struct change_stack *cs){"}, 2);
+  struct text *ins_txt = text_from((char*[]){"", ""}, 2);
+  struct insert_cmd ins_cmd = {.y=0, .x=6, .txt=*ins_txt};
+  struct delete_cmd del_cmd = text_insert(t, ins_cmd);
+  assert_text_equals(t, expected);
+
+  // test undo
+  text_delete(t, del_cmd); 
+  assert_text_equals(t, o);
+}
+int main(void){
+  test_ins7();
+  return 0;
+}
+int _main(void) {
   test_1();
 
   test_del1();
@@ -280,6 +297,7 @@ int main(void) {
   test_ins4();
   test_ins5();
   test_ins6();
+  test_ins7();
 
   return 0;
 }
