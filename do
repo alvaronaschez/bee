@@ -4,9 +4,9 @@
 
 CC=cc
 STD=c99
-#CFLAGS="-std=$STD -Wall -Wextra -pedantic -D_XOPEN_SOURCE=700 -D_DEFAULT_SOURCE"
+CFLAGS="-std=$STD -Wall -Wextra -pedantic -D_XOPEN_SOURCE=700 -D_DEFAULT_SOURCE"
 # use the following instead, for bsd compatibility
-CFLAGS="-std=$STD -Wall -Wextra -pedantic -D_XOPEN_SOURCE=700 -D_BSD_SOURCE"
+#CFLAGS="-std=$STD -Wall -Wextra -pedantic -D_XOPEN_SOURCE=700 -D_BSD_SOURCE"
 
 SOURCES="text.c text_util.c bee.c print.c"
 
@@ -43,11 +43,13 @@ test()
   ./out/test_text
 }
 
+# OpenBSD
+# doas sysctl kern.global_ptrace=1
 test_debug()
 {
   cc -c -g3 text.c -o obj/text.o
   cc -g3 test_text.c obj/*.o -o out/test_text
-  gdb ./out/test_text
+  gdb -tui ./out/test_text
 }
 
 
@@ -61,7 +63,7 @@ elif [ "$1" = 'debug' ]; then
   debug
 elif [ "$1" = 'test' ]; then
   test
-elif [ "$1" = 'test_debug' ]; then
+elif [ "$1" = 'test-debug' ]; then
   test_debug
 else
   echo ERROR: unknown argument

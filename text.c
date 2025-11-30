@@ -1,4 +1,5 @@
 #include "text.h"
+#include "text_util.h"
 
 #include <stdlib.h>
 #include <string.h>
@@ -6,12 +7,70 @@
 #define MAX(a,b) ((a)>(b)?(a):(b))
 #define MIN(a,b) ((a)<(b)?(a):(b))
 
+static void string_init_from_string(struct string* this, const struct string* other){
+  this->len = other->len;
+  this->cap = other->cap;
+  this->p = malloc(other->cap+1);
+  memcpy(this->p, other->p, other->len+1);
+}
+
+static void text_init_from_text(struct text* this, const struct text* other){
+  if(this==NULL) return;
+  if(other == NULL) {
+    this->len = 0; this->p = NULL;
+    return;
+  }
+  this->len = other->len;
+  this->p = malloc(this->len*sizeof(struct string));
+  for(int i=0; i<other->len; i++){
+    string_init_from_string(&this->p[i],&other->p[i]);
+  }
+}
+
 
 static inline struct insert_cmd delete_cmd_inverse(const struct text*, const struct delete_cmd*);
 static inline struct delete_cmd insert_cmd_inverse(const struct text*, const struct insert_cmd*);
 
-// takes ownership of cmd.txt
+void _text_insert(struct text *txt, const struct insert_cmd cmd) {
+  int x = cmd.x; int y = cmd.y;
+  struct text ntxt;
+  text_init_from_text(&ntxt, &cmd.txt);
+
+  // last line
+  ntxt.p[ntxt.len-1].len += txt->p[y].len - x;
+  ntxt.p[ntxt.len-1].cap = ntxt.p[ntxt.len-1].len;
+  ntxt.p[ntxt.len-1].p = realloc(ntxt.p[ntxt.len-1].p, ntxt.p[ntxt.len-1].len +1);
+  strcat(ntxt.p[ntxt.len-1].p, &txt->p[y].p[x]);
+
+  // first line
+  int old_len = ntxt.p[0].len;
+  ntxt.p[0].len += x;
+  ntxt.p[0].cap = ntxt.p[0].len;
+  ntxt.p[0].p = realloc(ntxt.p[0].p, ntxt.p[0].len +1);
+  memmove(&ntxt.p[0].p[x], ntxt.p[0].p, old_len +1);
+  memcpy(ntxt.p[0].p, txt->p[y].p, x);
+
+  // copy
+  free(txt->p[y].p);
+  old_len = txt->len;
+  txt->len += ntxt.len -1;
+  txt->p = realloc(txt->p, txt->len*sizeof(struct string));
+  // what if y+1 out of bounds??
+  if(y<old_len-1)
+    memmove(&txt->p[y+ntxt.len], &txt->p[y+1], (old_len-y-1)*sizeof(struct string));
+  memcpy(&txt->p[y], ntxt.p, ntxt.len*sizeof(struct string));
+  free(ntxt.p);
+}
+
 struct delete_cmd text_insert(struct text *txt, struct insert_cmd cmd) {
+  _text_insert(txt, cmd);
+  struct delete_cmd retval = insert_cmd_inverse(txt, &cmd);
+  text_deinit(&cmd.txt); // TODO: this is only for backwards compatibility, get rid of it
+  return retval;
+}
+
+// takes ownership of cmd.txt
+struct delete_cmd text_insert_old(struct text *txt, struct insert_cmd cmd) {
   int x = cmd.x; int y = cmd.y; struct text ntxt = cmd.txt;
   int yy = y+ntxt.len-1;
   //int xx = ntxt.p[ntxt.len-1].len-1 + (y==yy? x : 0);
@@ -73,12 +132,12 @@ struct insert_cmd text_delete(struct text *txt, const struct delete_cmd cmd) {
   int len_a = x;
   int len_b = (txt->p[yy].len - 1 - xx);
   int len = len_a + len_b;
+  txt->p[y].p = realloc(txt->p[y].p, len + 1);
   if(yy < txt->len)
     memmove(&txt->p[y].p[x], &txt->p[yy].p[xx+1], len_b);
     // alternative way:
     //memmove(&txt->p[y].p[x], &txt->p[yy].p[xx+1], strlen(&txt->p[yy].p[xx+1]));
   txt->p[y].p[len] = '\0';
-  txt->p[y].p = realloc(txt->p[y].p, len + 1); // here
   txt->p[y].len = txt->p[y].cap = len;
 
   if(y < yy){

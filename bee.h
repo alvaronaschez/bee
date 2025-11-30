@@ -49,7 +49,7 @@ struct bee {
 
   //struct string ins_buf;
   struct text ins_buf;
-  int ins_y, ins_bx, ins_vx;
+  //int ins_y, ins_bx, ins_vx;
 
   struct string cmd_buf;
 

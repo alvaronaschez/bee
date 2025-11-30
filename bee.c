@@ -33,35 +33,6 @@ static inline void change_stack_destroy(struct change_stack *cs){
   }
 }
 
-//static inline void autoscroll_x(struct bee *bee){
-//  // cursor too far to the right
-//  if(bee->vx + columnlen(&bee->buf.p[YY].p[XX], bee->vx) > SCREEN_WIDTH + bee->leftcol - MARGIN_LEN){
-//    int bx_leftcol, vx_leftcol;
-//    vx_to_bx(bee->buf.p[bee->y].p, bee->leftcol, &bx_leftcol, &vx_leftcol);
-//    while(bee->vx + columnlen(&bee->buf.p[YY].p[XX], bee->vx) > SCREEN_WIDTH + bee->leftcol - MARGIN_LEN){
-//      bee->leftcol += columnlen(bee->buf.p[bee->y].p + bx_leftcol, bee->leftcol);
-//      bx_leftcol += bytelen(bee->buf.p[bee->y].p + bx_leftcol);
-//    }
-//  }
-//  // cursor too far to the left
-//  if(bee->vx < bee->leftcol)
-//    bee->leftcol = bee->vx;
-//}
-//
-//static inline void autoscroll_y(struct bee *bee){
-//  // cursor too far up
-//  if(bee->toprow > bee->y)
-//    bee->toprow = bee->y;
-//  // cursor too far down
-//  if(bee->y - bee->toprow >= SCREEN_HEIGHT)
-//    bee->toprow = bee->y-SCREEN_HEIGHT+1;
-//}
-//
-//static inline void autoscroll(struct bee *bee){
-//  autoscroll_y(bee);
-//  autoscroll_x(bee);
-//}
-
 static inline void n_h(struct bee *bee){
   if(bee->bx > 0){
     //vx_to_bx(bee->buf.p[YY].p, bee->vx-1, &bee->bx, &bee->vx);
@@ -76,23 +47,12 @@ static inline void n_h(struct bee *bee){
   }
   bee->vxgoal = bee->vx;
 }
-//static inline void n_l(struct bee *bee){
-//  if(bee->bx + bytelen(&bee->buf.p[YY].p[XX]) < bee->buf.p[YY].len){
-//  // allow go till the linebreak character
-//  //if(bee->bx + bytelen(&bee->buf.p[YY].p[XX]) <= bee->buf.p[YY].len){
-//    bee->vx += columnlen(&bee->buf.p[YY].p[XX], bee->vx);
-//    bee->bx += bytelen(&bee->buf.p[YY].p[XX]);
-//    //autoscroll_x(bee);
-//  }
-//  bee->vxgoal = bee->vx;
-//}
 
 static inline void n_l_pastend(struct bee *bee){
   // you can go past the end of the line so you can append at the end of the line or join lines
   if(bee->bx + bytelen(&bee->buf.p[YY].p[XX]) <= bee->buf.p[YY].len){
     bee->vx += columnlen(&bee->buf.p[YY].p[XX], bee->vx);
     bee->bx += bytelen(&bee->buf.p[YY].p[XX]);
-    //autoscroll_x(bee);
   }
   bee->vxgoal = bee->vx;
 }
@@ -103,8 +63,6 @@ static inline void n_j(struct bee *bee){
 
   // adjust column position
   vx_to_bx(bee->buf.p[YY].p, bee->vxgoal, &bee->bx, &bee->vx);
-
-  //autoscroll(bee);
 }
 static inline void n_k(struct bee *bee){
   if(bee->y == 0) return;
@@ -112,8 +70,6 @@ static inline void n_k(struct bee *bee){
 
   // adjust column position
   vx_to_bx(bee->buf.p[YY].p, bee->vxgoal, &bee->bx, &bee->vx);
-
-  //autoscroll(bee);
 }
 
 static inline void n_x(struct bee *bee){
@@ -124,7 +80,6 @@ static inline void n_x(struct bee *bee){
   struct change_stack *change = malloc(sizeof(struct change_stack));
   *change = (struct change_stack){
     .y = bee->y, .bx = bee->bx, .vx = bee->vx,
-    //.leftcol=bee->leftcol, .toprow=bee->toprow,
     .op = INS,
   };
   int blen =  bytelen(&bee->buf.p[YY].p[XX]);
@@ -146,8 +101,6 @@ static inline void n_i(struct bee *bee){
   string_init(&s);
   text_append(&bee->ins_buf, s);
   //string_init(&bee->ins_buf);
-  bee->ins_y = bee->y; bee->ins_bx = bee->bx; bee->ins_vx = bee->vx;
-  //bee->ins_toprow = bee->toprow; bee->ins_leftcol = bee->leftcol;
   bee->mode = INSERT;
 }
 
@@ -162,14 +115,8 @@ static inline void n_colon(struct bee *bee){
   bee->mode = COMMAND;
 }
 
-//static inline void bee_save_cursor(const struct bee*bee, struct change_stack *ch){
-//  ch->y = bee->y; ch->bx = bee->bx; ch->vx = bee->vx;
-//  //ch->toprow = bee->toprow; ch->leftcol = bee->leftcol;
-//}
 static inline void bee_restore_cursor(struct bee *bee, const struct change_stack *ch){
   bee->y = ch->y; bee->bx = ch->bx; bee->vx = ch->vx;
-  //bee->toprow = ch->toprow; bee->leftcol = ch->leftcol;
-  //autoscroll(bee);
 }
 
 /*
@@ -274,26 +221,29 @@ static inline void i_esc(struct bee *bee){
     return;
   }
 
-  //int num_lines_inserted = bee->y - bee->ins_y;
-  //int num_lines_ins_buf = num_lines_inserted +1;
-  //struct text inserted_lines = text_from_string(&bee->ins_buf, num_lines_ins_buf);
-  //bee->ins_buf.len = bee->ins_buf.cap = 0; bee->ins_buf.p = NULL;
+  // TODO // vx?
+  int new_y = bee->y + bee->ins_buf.len-1;
+  int new_bx = bee->ins_buf.p[bee->ins_buf.len-1].len + (bee->ins_buf.len == 1 ? bee->bx : 0);
 
   struct change_stack *change = malloc(sizeof(struct change_stack));
   *change = (struct change_stack){
-    .y = bee->ins_y, .bx = bee->ins_bx, .vx = bee->ins_vx,
-    //.leftcol=bee->leftcol, .toprow=bee->toprow,
+    .y = bee->y, .bx = bee->bx, .vx = bee->vx,
     .op = DEL,
   };
 
   change->cmd.d = text_insert(&bee->buf, 
-      (struct insert_cmd){.x=bee->ins_bx, .y=bee->ins_y, .txt=bee->ins_buf});
+      (struct insert_cmd){.x=bee->bx, .y=bee->y, .txt=bee->ins_buf});
 
   change_stack_destroy(bee->redo_stack);
   bee->redo_stack = NULL;
   struct change_stack *old_undo_stack = bee->undo_stack;
   bee->undo_stack = change;
   bee->undo_stack->next = old_undo_stack;
+
+  // TODO // vx?
+  bee->y = new_y;
+  bee->bx = new_bx;
+  bee->vx = new_bx; // TODO
 
   bee->vxgoal = bee->vx;
   bee->mode = NORMAL;
@@ -308,8 +258,8 @@ static inline void i_backspace(struct bee *bee){
   if(s->len == 0)
     return;
 
-  bee->bx -= bytelen(&s->p[s->len-1]);
-  bee->vx -= columnlen(&s->p[s->len-1], bee->ins_vx);
+  //bee->bx -= bytelen(&s->p[s->len-1]);
+  //bee->vx -= columnlen(&s->p[s->len-1], bee->ins_vx);
   s->len--;
   s->p[s->len] = '\0';
 }
@@ -325,9 +275,10 @@ static inline void insert_read_key(struct bee *bee){
     case TB_KEY_BACKSPACE2:
       i_backspace(bee); break;
     case TB_KEY_ENTER:
-      bee->y++;
-      bee->bx = bee->vx = 0;
+      //bee->y++;
+      //bee->bx = bee->vx = 0;
       //string_append(&bee->ins_buf, "\n");
+      ;
       struct string s;
       string_init(&s);
       text_append(&bee->ins_buf, s); 
@@ -337,8 +288,8 @@ static inline void insert_read_key(struct bee *bee){
     char s[7];
     tb_utf8_unicode_to_char(s, ev.ch);
     string_append(&bee->ins_buf.p[bee->ins_buf.len-1], s);
-    bee->bx += strlen(s);
-    bee->vx += columnlen(s, bee->vx);
+    //bee->bx += strlen(s);
+    //bee->vx += columnlen(s, bee->vx);
   }
 }
 
