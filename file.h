@@ -7,7 +7,7 @@
 #include <sys/stat.h>
 #include <unistd.h>
 
-static inline struct string *load_file(const char *filename, int *len){
+static inline char **load_file(const char *filename, int *len){
   if (filename == NULL) return 0;
   FILE *fp = fopen(filename, "r");
   assert(fp);
@@ -17,9 +17,8 @@ static inline struct string *load_file(const char *filename, int *len){
   assert(fsize >= 0);
   if(fsize==0){
     *len = 1;
-    struct string *retval = malloc(sizeof(struct string));
-    retval[0].cap = retval[0].len = 0;
-    retval[0].p = calloc(1,1);
+    char **retval = malloc(sizeof(char*));
+    retval[0] = calloc(1,1);
     return retval;
   }
   rewind(fp);
@@ -35,16 +34,15 @@ static inline struct string *load_file(const char *filename, int *len){
     nlines++;
   *len = nlines;
   // copy all lines from fcontent into buf
-  struct string *buf = malloc(nlines * sizeof(struct string));
+  char **buf = malloc(nlines * sizeof(char*));
   int linelen;
   for(int i = 0, j = 0; i<nlines && j<fsize; i++){
     // count line length
     for(linelen = 0; j+linelen<fsize-1 && fcontent[j+linelen]!='\n'; linelen++);
     // copy line in buffer
-    buf[i].p = calloc(linelen+1, sizeof(char));
+    buf[i] = calloc(linelen+1, sizeof(char));
     if(linelen>0)
-      memcpy(buf[i].p , &fcontent[j], linelen);
-    buf[i].len = buf[i].cap = linelen;
+      memcpy(buf[i] , &fcontent[j], linelen);
 
     j += linelen+1;
   }
@@ -57,13 +55,13 @@ static inline void save_file(const struct text *txt, const char *filename){
   struct stat st;
   assert(0==stat(filename, &st));
   int n = strlen(filename)+strlen(".bee.bak")+1;
-  char *tmp = malloc(n);
+  char *tmp = malloc(n*sizeof(char));
   snprintf(tmp, n, "%s.bee.bak", filename);
   assert(0==rename(filename, tmp));
   FILE *f = fopen(filename, "a");
   assert(f);
   for(int i=0; i<txt->len; i++)
-    fprintf(f, "%s\n", txt->p[i].p);
+    fprintf(f, "%s\n", txt->p[i]);
   chmod(filename, st.st_mode);
   chown(filename, st.st_uid, st.st_gid);
   assert(0==fclose(f));

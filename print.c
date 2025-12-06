@@ -18,6 +18,7 @@ static inline void print_tb(int x, int y, char *c) {
   }
 }
 
+// TODO: replace by regular tb_print
 static inline void println(int xoff, int y, char *s) {
   if (s == NULL)
     return;
@@ -39,7 +40,7 @@ static inline void print_footer(const struct bee *bee) {
 
   if (bee->mode == COMMAND) {
     tb_printf(0, tb_height() - 1, FOOTER_FG, FOOTER_BG, "<C>  %s",
-              bee->cmd_buf.p);
+              bee->cmd_buf);
   } else {
     int buf_len =
         bee->mode == INSERT ? bee->buf.len + bee->y - bee->y : bee->buf.len;
@@ -48,7 +49,7 @@ static inline void print_footer(const struct bee *bee) {
   }
 }
 
-void print_screen(const struct bee *bee) {
+void print_screen_old(const struct bee *bee) {
   tb_clear();
   char vs[SCREEN_HEIGHT][SCREEN_WIDTH+1]; // virtual screen
   int lidx[SCREEN_HEIGHT];
@@ -60,6 +61,7 @@ void print_screen(const struct bee *bee) {
 
   int m = SCREEN_HEIGHT - SCREEN_HEIGHT/2 -1;
   bool is_insert_mode = bee->mode == INSERT;
+  //is_insert_mode = false;
 
   // map insert buffer (in insert mode) or current line (otherwise)
   // we distinguish 3 cases:
@@ -72,24 +74,25 @@ void print_screen(const struct bee *bee) {
   char* line = NULL;
   int len;
   if(!is_insert_mode){
-    len = bee->buf.p[bee->y].len;
-    line = bee->buf.p[bee->y].p;
+    len = strlen(bee->buf.p[bee->y]);
+    //len = columnlen(bee->buf.p[bee->y].p, 0);
+    line = bee->buf.p[bee->y];
   } else if(bee->ins_buf.len==1){
-    len = bee->ins_buf.p[0].len + bee->buf.p[bee->y].len;
+    len = strlen(bee->ins_buf.p[0]) + strlen(bee->buf.p[bee->y]);
     line = malloc(len+1);
-    memcpy(line, bee->buf.p[bee->y].p, bee->bx);
-    memcpy(&line[bee->bx], bee->ins_buf.p[0].p, bee->ins_buf.p[0].len);
-    memcpy(&line[bee->bx+bee->ins_buf.p[0].len], 
-      &bee->buf.p[bee->y].p[bee->bx], 
-      bee->buf.p[bee->y].len - bee->bx);
+    memcpy(line, bee->buf.p[bee->y], bee->bx);
+    memcpy(&line[bee->bx], bee->ins_buf.p[0], strlen(bee->ins_buf.p[0]));
+    memcpy(&line[strlen(bee->bx+bee->ins_buf.p[0])], 
+      &bee->buf.p[bee->y][bee->bx], 
+      strlen(bee->buf.p[bee->y]) - bee->bx);
     line[len]='\0';
-  } else { // (is_insert_mode && bee->ins_buf.len>1)
-    int len1 = bee->ins_buf.p[bee->ins_buf.len-1].len;
-    int len2 = bee->buf.p[bee->y].len - bee->bx;
+  } else { // (is_insert_mode && strlen(bee->ins_buf)>1)
+    int len1 = strlen(bee->ins_buf.p[bee->ins_buf.len-1]);
+    int len2 = strlen(bee->buf.p[bee->y]) - bee->bx;
     len = len1 + len2;
     line = malloc(len+1);
-    memcpy(line, bee->ins_buf.p[bee->ins_buf.len-1].p, len1);
-    memcpy(&line[len1], &bee->buf.p[bee->y].p[bee->bx], len2);
+    memcpy(line, bee->ins_buf.p[bee->ins_buf.len-1], len1);
+    memcpy(&line[len1], &bee->buf.p[bee->y][bee->bx], len2);
     line[len]='\0';
   }
   int nnn = len/SCREEN_WIDTH;
@@ -108,16 +111,16 @@ void print_screen(const struct bee *bee) {
     j++;
   }
   if(is_insert_mode && bee->ins_buf.len > 1){
-    int first_line_len = bee->bx + bee->ins_buf.p[0].len;
+    int first_line_len = strlen(bee->bx + bee->ins_buf.p[0]);
     char* first_line = malloc(first_line_len+1);
-    memcpy(first_line, bee->buf.p[bee->y].p, bee->bx);
-    memcpy(first_line, bee->ins_buf.p[0].p, bee->ins_buf.p[0].len);
+    memcpy(first_line, bee->buf.p[bee->y], bee->bx);
+    memcpy(first_line, bee->ins_buf.p[0], strlen(bee->ins_buf.p[0]));
     first_line[first_line_len] = '\0';
 
     char *curr_line;
     for(int j = m-1-k1, jj=bee->ins_buf.len-2; j>=0 && jj >=0; jj--){
-      curr_line = jj == 0 ? first_line : bee->ins_buf.p[jj].p;
-      int len = jj == 0 ? first_line_len : bee->ins_buf.p[jj].len;
+      curr_line = jj == 0 ? first_line : bee->ins_buf.p[jj];
+      int len = jj == 0 ? first_line_len : (int)strlen(bee->ins_buf.p[jj]);
       for(int n=len/SCREEN_WIDTH; n>=0 && j>=0; n--){
         strlcpy(vs[j], &curr_line[n*SCREEN_WIDTH], SCREEN_WIDTH+1);
         j--;
@@ -136,8 +139,8 @@ void print_screen(const struct bee *bee) {
   for(int j=m+1+k2, jj=bee_y+1; j<SCREEN_HEIGHT && jj<bee->buf.len; jj++){
     lidx[j] = jj-bee_y;
 
-    for(int n = 0; n <= bee->buf.p[jj].len && j<SCREEN_HEIGHT; n+=SCREEN_WIDTH) {
-      strlcpy(vs[j], &bee->buf.p[jj].p[n], SCREEN_WIDTH+1);
+    for(int n = 0; n <= (int)strlen(bee->buf.p[jj]) && j<SCREEN_HEIGHT; n+=SCREEN_WIDTH) {
+      strlcpy(vs[j], &bee->buf.p[jj][n], SCREEN_WIDTH+1);
       j++;
     }
   }
@@ -145,9 +148,9 @@ void print_screen(const struct bee *bee) {
   // map top half of the screen
   for(int j = m-1-k1, jj=bee_y-1; j>=0 && jj >=0; jj--){
     // number of screen lines -1 in file line
-    int n = bee->buf.p[jj].len / SCREEN_WIDTH; 
+    int n = strlen(bee->buf.p[jj]) / SCREEN_WIDTH; 
     for(; n>=0 && j>=0; n--){
-      strlcpy(vs[j], &bee->buf.p[jj].p[n*SCREEN_WIDTH], SCREEN_WIDTH+1);
+      strlcpy(vs[j], &bee->buf.p[jj][n*SCREEN_WIDTH], SCREEN_WIDTH+1);
       j--;
     }
     if(j+1>=0) lidx[j+1] = bee_y-jj;
@@ -170,11 +173,100 @@ void print_screen(const struct bee *bee) {
   if(!is_insert_mode){
     x = bee->vx;
   } else if (bee->ins_buf.len == 1){
-    x = bee->ins_buf.p[bee->ins_buf.len-1].len + bee->vx;
+    x = strlen(bee->ins_buf.p[bee->ins_buf.len-1]) + bee->vx;
   } else {
-    x = bee->ins_buf.p[bee->ins_buf.len-1].len;
+    x = strlen(bee->ins_buf.p[bee->ins_buf.len-1]);
   }
   tb_set_cursor(( x % SCREEN_WIDTH) + MARGIN_LEN, m);
   tb_present();
 }
 
+int vlen(char *s){
+  int vx = 0;
+  while(*s != '\0'){
+    vx += columnlen(s, vx);
+    s += bytelen(s);
+  }
+  return vx;
+}
+
+int bx_to_vx(int bx, char* s){
+  int vx = 0;
+  while(bx > 0){
+    vx += columnlen(s, vx);
+    int bn = bytelen(s);
+    bx -= bn;
+    s += bn;
+  }
+  return vx;
+}
+
+void print_to_vscreen(const char *s, char **vscreen, int y_max, int x_max, int y_start){
+  int vx = 0;
+  for(int j = y_start; j < y_max && *s; j++){
+    int i=0;
+    for(int vi = 0; vi < x_max && *s;){
+      int bn = bytelen(s);
+      int vn = columnlen(s, vx);
+      if(*s != '\t'){
+        if(vn+vi > x_max)
+          break;
+        vx += vn;
+        vi += vn;
+        if(j>=0) // print
+          for(int k=0; k<bn; k++){
+          vscreen[j][i] = *s;
+          s++;
+        }
+        i += bn;
+      } else { // (*s == '\t')
+        // replace tab with spaces
+        vscreen[j][i] = ' ';
+        i++;
+        vi++;
+        vx++;
+        if(vn == 1)
+          s++;
+      }
+    }
+    vscreen[j][i] = '\0';
+  }
+}
+
+void print_screen(const struct bee *bee) {
+  tb_clear();
+
+  char* vs[SCREEN_HEIGHT]; // init virtual screen
+  //int lidx[SCREEN_HEIGHT];
+  for(int j=0; j<SCREEN_HEIGHT; j++){
+    vs[j] = malloc(2*SCREEN_WIDTH+1);
+    vs[j][0] = '\0';
+    //lidx[j] = -1;
+  }
+
+  int m = SCREEN_HEIGHT - SCREEN_HEIGHT/2 -1;
+  //bool is_insert_mode = bee->mode == INSERT;
+
+  // map cursor line
+  print_to_vscreen(bee->buf.p[bee->y], vs, SCREEN_HEIGHT, SCREEN_WIDTH, 
+      m - bx_to_vx(bee->bx, bee->buf.p[bee->y])/SCREEN_WIDTH);
+
+  // map above cursor // TODO
+  // map below cursor // TODO
+
+  // print
+  for(int j=0; j<SCREEN_HEIGHT; j++){
+    println(MARGIN_LEN, j, vs[j]);
+  }
+
+  print_footer(bee);
+  int cursor_col = bx_to_vx(bee->bx, bee->buf.p[bee->y]) % SCREEN_WIDTH;
+  tb_set_cursor( cursor_col + MARGIN_LEN, m);
+
+  tb_present();
+  
+  // cleanup virtual screen
+  for(int j=0; j<SCREEN_HEIGHT; j++){
+    free(vs[j]);
+  }
+}

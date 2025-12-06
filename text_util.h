@@ -3,8 +3,8 @@
 
 #include "text.h"
 
-void string_init(struct string*);
-void string_deinit(struct string*);
+//void string_init(struct string*);
+//void string_deinit(struct string*);
 struct string *string_create(void);
 void string_destroy(struct string*);
 void string_append(struct string*, const char*);
