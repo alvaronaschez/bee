@@ -25,7 +25,7 @@ static inline void change_stack_destroy(struct change_stack *cs){
     aux = cs->next;
     if(cs->op == INS){
       for(int i=0; i<cs->cmd.i.txt.len; i++)
-        free(cs->cmd.i.txt.p[i].p);
+        free(cs->cmd.i.txt.p[i]);
       free(cs->cmd.i.txt.p);
     }
     free(cs);
@@ -37,11 +37,11 @@ static inline void n_h(struct bee *bee){
   if(bee->bx > 0){
     //vx_to_bx(bee->buf.p[YY].p, bee->vx-1, &bee->bx, &bee->vx);
     // that would be enough, the following is an optimization
-    if ( *(&bee->buf.p[YY].p[XX]-1) == '\t' ) {
-      vx_to_bx(bee->buf.p[YY].p, bee->vx-1, &bee->bx, &bee->vx);
+    if ( bee->buf.p[YY][XX-1] == '\t' ) {
+      vx_to_bx(bee->buf.p[YY], bee->vx-1, &bee->bx, &bee->vx);
     } else {
-      bee->bx = utf8prev(bee->buf.p[YY].p, bee->bx);
-      bee->vx -= columnlen(&bee->buf.p[YY].p[XX], bee->vx);
+      bee->bx = utf8prev(bee->buf.p[YY], bee->bx);
+      bee->vx -= columnlen(&bee->buf.p[YY][XX], bee->vx);
     }
     //autoscroll_x(bee);
   }
@@ -50,9 +50,9 @@ static inline void n_h(struct bee *bee){
 
 static inline void n_l_pastend(struct bee *bee){
   // you can go past the end of the line so you can append at the end of the line or join lines
-  if(bee->bx + bytelen(&bee->buf.p[YY].p[XX]) <= bee->buf.p[YY].len){
-    bee->vx += columnlen(&bee->buf.p[YY].p[XX], bee->vx);
-    bee->bx += bytelen(&bee->buf.p[YY].p[XX]);
+  if(bee->bx + bytelen(&bee->buf.p[YY][XX]) <= (int)strlen(bee->buf.p[YY])){
+    bee->vx += columnlen(&bee->buf.p[YY][XX], bee->vx);
+    bee->bx += bytelen(&bee->buf.p[YY][XX]);
   }
   bee->vxgoal = bee->vx;
 }
@@ -62,14 +62,14 @@ static inline void n_j(struct bee *bee){
   bee->y++;
 
   // adjust column position
-  vx_to_bx(bee->buf.p[YY].p, bee->vxgoal, &bee->bx, &bee->vx);
+  vx_to_bx(bee->buf.p[YY], bee->vxgoal, &bee->bx, &bee->vx);
 }
 static inline void n_k(struct bee *bee){
   if(bee->y == 0) return;
   bee->y--;
 
   // adjust column position
-  vx_to_bx(bee->buf.p[YY].p, bee->vxgoal, &bee->bx, &bee->vx);
+  vx_to_bx(bee->buf.p[YY], bee->vxgoal, &bee->bx, &bee->vx);
 }
 
 static inline void n_x(struct bee *bee){
@@ -82,13 +82,13 @@ static inline void n_x(struct bee *bee){
     .y = bee->y, .bx = bee->bx, .vx = bee->vx,
     .op = INS,
   };
-  int blen =  bytelen(&bee->buf.p[YY].p[XX]);
+  int blen =  bytelen(&bee->buf.p[YY][XX]);
   change->cmd.i = text_delete(&bee->buf,
       (struct delete_cmd){.x=bee->bx, .y=bee->y, .xx=bee->bx+blen-1, .yy=bee->y});
   bee->undo_stack = change;
   bee->undo_stack->next = old_undo_stack;
 
-  if(bee->bx != 0 && bee->bx == bee->buf.p[bee->y].len)
+  if(bee->bx != 0 && bee->bx == (int)strlen(bee->buf.p[bee->y]))
     n_h(bee);
   if(bee->y == bee->buf.len){
     n_k(bee);
@@ -96,11 +96,10 @@ static inline void n_x(struct bee *bee){
 }
 
 static inline void n_i(struct bee *bee){
-  text_init(&bee->ins_buf);
-  struct string s;
-  string_init(&s);
-  text_append(&bee->ins_buf, s);
-  //string_init(&bee->ins_buf);
+  bee->ins_buf.p = malloc(1*sizeof(char*));
+  bee->ins_buf.len = 1;
+  bee->ins_buf.p[0] = calloc(1,1);
+
   bee->mode = INSERT;
 }
 
@@ -110,8 +109,9 @@ static inline void n_a(struct bee *bee){
 }
 
 static inline void n_colon(struct bee *bee){
-  string_init(&bee->cmd_buf);
-  string_append(&bee->cmd_buf, ":");
+  bee->cmd_buf = malloc(2*sizeof(char));
+  bee->cmd_buf[0] = ':';
+  bee->cmd_buf[1] = '\0';
   bee->mode = COMMAND;
 }
 
@@ -223,7 +223,7 @@ static inline void i_esc(struct bee *bee){
 
   // TODO // vx?
   int new_y = bee->y + bee->ins_buf.len-1;
-  int new_bx = bee->ins_buf.p[bee->ins_buf.len-1].len + (bee->ins_buf.len == 1 ? bee->bx : 0);
+  int new_bx = strlen(bee->ins_buf.p[bee->ins_buf.len-1]) + (bee->ins_buf.len == 1 ? bee->bx : 0);
 
   struct change_stack *change = malloc(sizeof(struct change_stack));
   *change = (struct change_stack){
@@ -253,15 +253,14 @@ static inline void i_esc(struct bee *bee){
 static inline void i_backspace(struct bee *bee){
   if(bee->ins_buf.len == 0)
     return;
-  struct string *s = &bee->ins_buf.p[bee->ins_buf.len-1];
+  char *s = bee->ins_buf.p[bee->ins_buf.len-1];
 
-  if(s->len == 0)
+  int n = strlen(s);
+  if(n == 0)
     return;
 
-  //bee->bx -= bytelen(&s->p[s->len-1]);
-  //bee->vx -= columnlen(&s->p[s->len-1], bee->ins_vx);
-  s->len--;
-  s->p[s->len] = '\0';
+  // TODO: this is not gonna work with utf8, assuming all chars len = 1 (ascii)
+  s[n-1] = '\0';
 }
 
 static inline void insert_read_key(struct bee *bee){
@@ -275,50 +274,46 @@ static inline void insert_read_key(struct bee *bee){
     case TB_KEY_BACKSPACE2:
       i_backspace(bee); break;
     case TB_KEY_ENTER:
-      //bee->y++;
-      //bee->bx = bee->vx = 0;
-      //string_append(&bee->ins_buf, "\n");
       ;
-      struct string s;
-      string_init(&s);
-      text_append(&bee->ins_buf, s); 
+      bee->ins_buf.p = realloc(bee->ins_buf.p, (++bee->ins_buf.len)*sizeof(char*));
+      bee->ins_buf.p[bee->ins_buf.len-1] = calloc(1,1);
       break;
   }
   else if(ev.ch){
     char s[7];
     tb_utf8_unicode_to_char(s, ev.ch);
-    string_append(&bee->ins_buf.p[bee->ins_buf.len-1], s);
-    //bee->bx += strlen(s);
-    //bee->vx += columnlen(s, bee->vx);
+    bee->ins_buf.p[bee->ins_buf.len-1] = realloc(
+        bee->ins_buf.p[bee->ins_buf.len-1],
+        strlen(bee->ins_buf.p[bee->ins_buf.len-1]) + 7);
+    strcat(bee->ins_buf.p[bee->ins_buf.len-1], s);
   }
 }
 
 static inline void c_esc(struct bee *bee){
-  free(bee->cmd_buf.p);
-  bee->cmd_buf.len = bee->cmd_buf.cap = 0;
+  free(bee->cmd_buf);
   bee->mode = NORMAL;
 }
 
 static inline void c_backspace(struct bee *bee){
-  if(bee->cmd_buf.len == 1)
+  if(strlen(bee->cmd_buf) == 1)
     c_esc(bee);
   else {
-    bee->cmd_buf.p[bee->cmd_buf.len-1] = '\0';
-    bee->cmd_buf.len--;
+    bee->cmd_buf[strlen(bee->cmd_buf)-1] = '\0';
   }
 }
 
 static inline void c_enter(struct bee *bee){
-  if(!strcmp(bee->cmd_buf.p, ":q")){
+  if(!strcmp(bee->cmd_buf, ":q")){
     bee->quit = 1;
   }
-  else if(!strcmp(bee->cmd_buf.p, ":w")){
+  else if(!strcmp(bee->cmd_buf, ":w")){
     save_file(&bee->buf, bee->filename);
   }
-  else if(!strcmp(bee->cmd_buf.p, ":wq")){
+  else if(!strcmp(bee->cmd_buf, ":wq")){
     save_file(&bee->buf, bee->filename);
     bee->quit = 1;
   }
+  free(bee->cmd_buf);
   bee->mode = NORMAL;
 }
 
@@ -338,7 +333,9 @@ static inline void command_read_key(struct bee *bee){
   else if(ev.ch){
     char s[7];
     tb_utf8_unicode_to_char(s, ev.ch);
-    string_append(&bee->cmd_buf, s);
+    //string_append(&bee->cmd_buf, s);
+    bee->cmd_buf = realloc(bee->cmd_buf, strlen(bee->cmd_buf) + 7);
+    strcat(bee->cmd_buf, s);
   }
 }
 
@@ -368,7 +365,7 @@ static inline void bee_init(struct bee *bee){
 
 static inline void bee_destroy(struct bee *bee){
   for(int i=0; i<bee->buf.len; i++)
-    string_deinit(&bee->buf.p[i]);
+    free(bee->buf.p[i]);
   free(bee->buf.p);
   if(bee->filename)
     free(bee->filename);

@@ -1,13 +1,13 @@
 #ifndef BEE_TEXT_H
 #define BEE_TEXT_H
 
-struct string {
-  char *p; // null terminated
-  int len, cap;
-};
+//struct string {
+//  char *p; // null terminated
+//  int len, cap;
+//};
 
 struct text {
-  struct string *p;
+  char** p;
   int len;
 };
 

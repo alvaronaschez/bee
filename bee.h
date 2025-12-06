@@ -47,11 +47,9 @@ struct bee {
 
   int y, bx, vx, vxgoal;
 
-  //struct string ins_buf;
   struct text ins_buf;
-  //int ins_y, ins_bx, ins_vx;
 
-  struct string cmd_buf;
+  char* cmd_buf;
 
   struct change_stack *undo_stack, *redo_stack;
 
