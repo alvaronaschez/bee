@@ -221,7 +221,8 @@ void print_to_vscreen(const char *s, char **vscreen, int y_max, int x_max, int y
         i += bn;
       } else { // (*s == '\t')
         // replace tab with spaces
-        vscreen[j][i] = ' ';
+        if(j>=0)
+          vscreen[j][i] = ' ';
         i++;
         vi++;
         vx++;
@@ -237,26 +238,49 @@ void print_screen(const struct bee *bee) {
   tb_clear();
 
   char* vs[SCREEN_HEIGHT]; // init virtual screen
-  //int lidx[SCREEN_HEIGHT];
+  int lidx[SCREEN_HEIGHT];
   for(int j=0; j<SCREEN_HEIGHT; j++){
     vs[j] = malloc(2*SCREEN_WIDTH+1);
     vs[j][0] = '\0';
-    //lidx[j] = -1;
+    lidx[j] = -1;
   }
 
   int m = SCREEN_HEIGHT - SCREEN_HEIGHT/2 -1;
   //bool is_insert_mode = bee->mode == INSERT;
 
   // map cursor line
-  print_to_vscreen(bee->buf.p[bee->y], vs, SCREEN_HEIGHT, SCREEN_WIDTH, 
-      m - bx_to_vx(bee->bx, bee->buf.p[bee->y])/SCREEN_WIDTH);
+  char *cursor_line = bee->buf.p[bee->y];
+  int cursor_vx = bx_to_vx(bee->bx, cursor_line);
+  int cursor_vlen = vlen(cursor_line);
+  int y = m - cursor_vx/SCREEN_WIDTH;
+  print_to_vscreen(cursor_line, vs, SCREEN_HEIGHT, SCREEN_WIDTH, y);
+  if(m >= cursor_vx/SCREEN_WIDTH)
+    lidx[m - cursor_vx/SCREEN_WIDTH] = 0;
 
-  // map above cursor // TODO
-  // map below cursor // TODO
+  // map above cursor
+  for(int j = y, jj=bee->y-1; j>0 && jj >=0; jj--){
+    j -= 1 + vlen(bee->buf.p[jj])/SCREEN_WIDTH;
+    if(j>=0)
+      lidx[j] = (bee->y-1) - jj + 1;
+    print_to_vscreen(bee->buf.p[jj], vs, SCREEN_HEIGHT, SCREEN_WIDTH, j);
+  }
+  
+  // map below cursor
+  for(int j = y+cursor_vlen/SCREEN_WIDTH+1, jj=bee->y+1; j<SCREEN_HEIGHT && jj<bee->buf.len; jj++){
+    print_to_vscreen(bee->buf.p[jj], vs, SCREEN_HEIGHT, SCREEN_WIDTH, j);
+    lidx[j] = jj - bee->y;
+    j += 1 + vlen(bee->buf.p[jj])/SCREEN_WIDTH;
+  }
 
   // print
   for(int j=0; j<SCREEN_HEIGHT; j++){
     println(MARGIN_LEN, j, vs[j]);
+    if(lidx[j]>=0){
+      if(lidx[j]==0)
+        tb_print(0, j, MARGIN_FG, MARGIN_BG, " 0 ");
+      else
+        tb_printf(0, j, MARGIN_FG, MARGIN_BG, "%-3d ", lidx[j]);
+    }
   }
 
   print_footer(bee);
