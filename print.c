@@ -266,6 +266,7 @@ void print_screen(const struct bee *bee) {
     middle_lines->str[bee->bx] = '\0';
     strcat(middle_lines->str, bee->ins_buf.p[0]);
     strcat(middle_lines->str, &bee->buf.p[bee->y][bee->bx]);
+    // TODO: multiple insert lines
   }
 
   int y = m - bx_to_vx(bee->bx, bee->buf.p[bee->y])/SCREEN_WIDTH; // first line printed
@@ -277,6 +278,20 @@ void print_screen(const struct bee *bee) {
     print_to_vscreen(s, vs, SCREEN_HEIGHT, SCREEN_WIDTH, y);
     if(y >= 0)
       lidx[y] = 0;
+  }
+
+  // cleanup middle_lines
+  if(is_insert_mode){
+    struct string_list *aux = middle_lines->next;
+    free(middle_lines->str);
+    free(middle_lines);
+    while(aux){
+      if(aux->next == NULL)
+        free(aux->str);
+      struct string_list *aux2 = aux;
+      aux = aux->next;
+      free(aux2);
+    }
   }
 
   // map above cursor
