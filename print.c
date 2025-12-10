@@ -5,6 +5,11 @@
 #include "text_util.h"
 #include <stdbool.h>
 
+struct string_list {
+  char *str;
+  struct string_list *next;
+};
+
 static inline void print_tb(int x, int y, char *c) {
   // print nothing, it doesn't matter
   if (*c == '\t')
@@ -246,16 +251,33 @@ void print_screen(const struct bee *bee) {
   }
 
   int m = SCREEN_HEIGHT - SCREEN_HEIGHT/2 -1;
-  //bool is_insert_mode = bee->mode == INSERT;
+  bool is_insert_mode = bee->mode == INSERT;
 
-  // map cursor line
-  char *cursor_line = bee->buf.p[bee->y];
-  int cursor_vx = bx_to_vx(bee->bx, cursor_line);
-  int cursor_vlen = vlen(cursor_line);
-  int y = m - cursor_vx/SCREEN_WIDTH;
-  print_to_vscreen(cursor_line, vs, SCREEN_HEIGHT, SCREEN_WIDTH, y);
-  if(m >= cursor_vx/SCREEN_WIDTH)
-    lidx[m - cursor_vx/SCREEN_WIDTH] = 0;
+  struct string_list *middle_lines;
+  if(!is_insert_mode){
+    middle_lines = malloc(sizeof(struct string_list));
+    middle_lines->str = bee->buf.p[bee->y];
+    middle_lines->next = NULL;
+  } else {
+    middle_lines = malloc(sizeof(struct string_list));
+    middle_lines->next = NULL;
+    middle_lines->str = malloc(strlen(bee->ins_buf.p[0]) + strlen(bee->buf.p[bee->y]) + 1);
+    memcpy(middle_lines->str, bee->buf.p[bee->y], bee->bx);
+    middle_lines->str[bee->bx] = '\0';
+    strcat(middle_lines->str, bee->ins_buf.p[0]);
+    strcat(middle_lines->str, &bee->buf.p[bee->y][bee->bx]);
+  }
+
+  int y = m - bx_to_vx(bee->bx, bee->buf.p[bee->y])/SCREEN_WIDTH; // first line printed
+  int yy = y + vlen(bee->buf.p[bee->y])/SCREEN_WIDTH; // last line printed
+  y = yy + 1; // prepare to iterate
+  for(struct string_list *lines = middle_lines; lines; lines = lines->next){
+    char *s = lines->str;
+    y -= vlen(s)/SCREEN_WIDTH +1;
+    print_to_vscreen(s, vs, SCREEN_HEIGHT, SCREEN_WIDTH, y);
+    if(y >= 0)
+      lidx[y] = 0;
+  }
 
   // map above cursor
   for(int j = y, jj=bee->y-1; j>0 && jj >=0; jj--){
@@ -266,7 +288,7 @@ void print_screen(const struct bee *bee) {
   }
   
   // map below cursor
-  for(int j = y+cursor_vlen/SCREEN_WIDTH+1, jj=bee->y+1; j<SCREEN_HEIGHT && jj<bee->buf.len; jj++){
+  for(int j = yy+1, jj=bee->y+1; j<SCREEN_HEIGHT && jj<bee->buf.len; jj++){
     print_to_vscreen(bee->buf.p[jj], vs, SCREEN_HEIGHT, SCREEN_WIDTH, j);
     lidx[j] = jj - bee->y;
     j += 1 + vlen(bee->buf.p[jj])/SCREEN_WIDTH;
