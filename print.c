@@ -253,6 +253,7 @@ void print_screen(const struct bee *bee) {
   int m = SCREEN_HEIGHT - SCREEN_HEIGHT/2 -1;
   bool is_insert_mode = bee->mode == INSERT;
 
+  // prepare middle lines
   struct string_list *middle_lines;
   if(!is_insert_mode){
     middle_lines = malloc(sizeof(struct string_list));
@@ -265,15 +266,27 @@ void print_screen(const struct bee *bee) {
     memcpy(middle_lines->str, bee->buf.p[bee->y], bee->bx);
     middle_lines->str[bee->bx] = '\0';
     strcat(middle_lines->str, bee->ins_buf.p[0]);
-    strcat(middle_lines->str, &bee->buf.p[bee->y][bee->bx]);
-    // TODO: multiple insert lines
+
+    struct string_list *tail = middle_lines;
+    for(int i=1; i<bee->ins_buf.len; i++){
+      tail->next = malloc(sizeof(struct string_list));
+      tail = tail->next;
+      tail->next = NULL;
+      tail->str = bee->ins_buf.p[i];
+    }
+    if(tail != middle_lines){
+      tail->str = calloc(1, 1);
+      strcat(tail->str, bee->ins_buf.p[bee->ins_buf.len -1]);
+    }
+    strcat(tail->str, &bee->buf.p[bee->y][bee->bx]);
   }
 
+  // print middle lines
   int y = m - bx_to_vx(bee->bx, bee->buf.p[bee->y])/SCREEN_WIDTH; // first line printed
   int yy = y + vlen(bee->buf.p[bee->y])/SCREEN_WIDTH; // last line printed
   y = yy + 1; // prepare to iterate
-  for(struct string_list *lines = middle_lines; lines; lines = lines->next){
-    char *s = lines->str;
+  for(struct string_list *line = middle_lines; line; line = line->next){
+    char *s = line->str;
     y -= vlen(s)/SCREEN_WIDTH +1;
     print_to_vscreen(s, vs, SCREEN_HEIGHT, SCREEN_WIDTH, y);
     if(y >= 0)
@@ -282,15 +295,18 @@ void print_screen(const struct bee *bee) {
 
   // cleanup middle_lines
   if(is_insert_mode){
-    struct string_list *aux = middle_lines->next;
-    free(middle_lines->str);
-    free(middle_lines);
-    while(aux){
-      if(aux->next == NULL)
-        free(aux->str);
-      struct string_list *aux2 = aux;
-      aux = aux->next;
-      free(aux2);
+    struct string_list *head, *tail;
+    tail = head = middle_lines;
+    while(tail->next) // find tail
+      tail = tail->next;
+    // there are only two strings that we allocated, the ones in head and tail
+    free(head->str);
+    if(head!=tail)
+      free(tail->str);
+    while(head){
+      struct string_list *aux = head->next;
+      free(head);
+      head = aux;
     }
   }
 
