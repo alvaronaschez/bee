@@ -57,16 +57,14 @@ static inline void n_l_pastend(struct bee *bee){
   bee->vxgoal = bee->vx;
 }
 
-static inline void n_j(struct bee *bee){
-  if(bee->y +1 == bee->buf.len) return;
-  bee->y++;
+static inline void n_j(struct bee *bee, int n){
+  bee->y = MIN(bee->buf.len -1, bee->y + n);
 
   // adjust column position
   vx_to_bx(bee->buf.p[YY], bee->vxgoal, &bee->bx, &bee->vx);
 }
-static inline void n_k(struct bee *bee){
-  if(bee->y == 0) return;
-  bee->y--;
+static inline void n_k(struct bee *bee, int n){
+  bee->y = MAX(0, bee->y - n);
 
   // adjust column position
   vx_to_bx(bee->buf.p[YY], bee->vxgoal, &bee->bx, &bee->vx);
@@ -91,7 +89,7 @@ static inline void n_x(struct bee *bee){
   if(bee->bx != 0 && bee->bx == (int)strlen(bee->buf.p[bee->y]))
     n_h(bee);
   if(bee->y == bee->buf.len){
-    n_k(bee);
+    n_k(bee, 1);
   }
 }
 
@@ -197,9 +195,9 @@ static inline void normal_read_key(struct bee *bee){
   case 'h':
     n_h(bee); break;
   case 'j':
-    n_j(bee); break;
+    n_j(bee, 1); break;
   case 'k':
-    n_k(bee); break;
+    n_k(bee, 1); break;
   case 'l':
     n_l_pastend(bee); break;
   case 'x':
@@ -208,10 +206,24 @@ static inline void normal_read_key(struct bee *bee){
     n_u(bee); break;
   case ':':
     n_colon(bee); break;
+  case '0':
+    bee->bx = bee->vx = 0;
+    break;
+  case '$':
+    while(bee->buf.p[bee->y][bee->bx] != '\0'){
+      bee->vx += columnlen(bee->buf.p[bee->y]+bee->bx, bee->vx);
+      bee->bx += bytelen(bee->buf.p[bee->y]+bee->bx);
+    }
+    n_h(bee);
+    break;
   }
   else if(ev.key!=0) switch(ev.key){
   case TB_KEY_CTRL_R:
     n_Cr(bee); break;
+  case TB_KEY_CTRL_D:
+    n_j(bee, SCREEN_HEIGHT/2); break;
+  case TB_KEY_CTRL_U:
+    n_k(bee, SCREEN_HEIGHT/2); break;
   }
 }
 

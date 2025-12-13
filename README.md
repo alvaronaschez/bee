@@ -42,6 +42,10 @@ Try to run `./bee bee.c` to use `bee` to edit bee itself.
 - u - undo
 - Ctrl+r - redo
 - : - command mode
+- Ctrl+d - move half screen down
+- Ctrl+u - move half screen up
+- 0 - move to the beginning of the line
+- $ - move to end of line
 
 ### INSERT MODE
 
