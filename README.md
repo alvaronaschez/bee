@@ -10,6 +10,10 @@ A Vi-like text editor
 
 - Typewriter scrolling
 
+- Soft wrapping
+
+- Undo/Redo
+
 ## How to install Bee?
 
 ### Requirements
