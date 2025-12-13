@@ -2,6 +2,14 @@
 
 A Vi-like text editor
 
+## Features
+
+- Minimal dependencies (termbox2)
+
+- Around 800 lines of code (not counting termbox2)
+
+- Typewriter scrolling
+
 ## How to install Bee?
 
 ### Requirements

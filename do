@@ -8,7 +8,7 @@ CFLAGS="-std=$STD -Wall -Wextra -pedantic -D_XOPEN_SOURCE=700 -D_DEFAULT_SOURCE"
 # use the following instead, for bsd compatibility
 #CFLAGS="-std=$STD -Wall -Wextra -pedantic -D_XOPEN_SOURCE=700 -D_BSD_SOURCE"
 
-SOURCES="text.c text_util.c bee.c print.c"
+SOURCES="bee.c text.c text_util.c file.c print.c"
 
 build()
 {
@@ -65,6 +65,8 @@ elif [ "$1" = 'test' ]; then
   test
 elif [ "$1" = 'test-debug' ]; then
   test_debug
+elif [ "$1" = 'cloc' ]; then
+  cloc $SOURCES main.c
 else
   echo ERROR: unknown argument
 fi
