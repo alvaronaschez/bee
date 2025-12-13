@@ -74,7 +74,45 @@ int bx_to_vx(int bx, char* s){
   return vx;
 }
 
-void print_to_vscreen(const char *s, char **vscreen, int y_max, int x_max, int y_start){
+void print_to_vscreen(const char *s, char **vs, int y_len, int x_len, int y_start){
+  int bx, vx, i;
+  bx = vx = i = 0;
+  while(1){
+    int j = vx / x_len;
+    if(j+y_start >= y_len) return;
+
+    int vn = columnlen(s+bx, vx);
+    int bn = bytelen(s+bx);
+
+    switch(s[bx]){
+      case '\t':
+        if(j+y_start >= 0)
+          vs[j+y_start][i] = ' ';
+        bn = vn == 1 ? 1 : 0;
+        vn = 1;
+        break;
+      default:
+        if(j+y_start >= 0)
+          for(int k=0; k<bn; k++)
+            vs[j+y_start][i+k] = s[bx+k];
+    }
+
+    if(s[bx] == '\0') return;
+
+    bool is_endline = (vx+1) % x_len == 0;
+    if(is_endline){
+      if(j+y_start >= 0)
+        vs[j+y_start][i+bn] = '\0';
+      i = 0;
+    } else
+      i += bn;
+
+    vx += vn;
+    bx += bn;
+  }
+}
+
+void print_to_vscreen_old(const char *s, char **vscreen, int y_max, int x_max, int y_start){
   int vx = 0;
   for(int j = y_start; j < y_max && *s; j++){
     int i=0;
@@ -88,22 +126,26 @@ void print_to_vscreen(const char *s, char **vscreen, int y_max, int x_max, int y
         vi += vn;
         if(j>=0) // print
           for(int k=0; k<bn; k++){
-          vscreen[j][i] = *s;
-          s++;
+            if(j>=0 && i>=0 && j<=y_max && i<=y_max)
+              vscreen[j][i] = *s;
+            s++;
         }
         i += bn;
       } else { // (*s == '\t')
         // replace tab with spaces
-        if(j>=0)
+        //if(j>=0)
+        if(j>=0 && i>=0 && j<=y_max && i<=y_max)
           vscreen[j][i] = ' ';
         i++;
         vi++;
         vx++;
         if(vn == 1)
           s++;
+        vn--;
       }
-    }
-    vscreen[j][i] = '\0';
+    } 
+    if(j>=0 && i>=0 && j<=y_max && i<=y_max)
+      vscreen[j][i] = '\0';
   }
 }
 
