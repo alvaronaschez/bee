@@ -278,6 +278,11 @@ static inline void insert_read_key(struct bee *bee){
       bee->ins_buf.p = realloc(bee->ins_buf.p, (++bee->ins_buf.len)*sizeof(char*));
       bee->ins_buf.p[bee->ins_buf.len-1] = calloc(1,1);
       break;
+    case TB_KEY_TAB:
+      bee->ins_buf.p[bee->ins_buf.len-1] = realloc(
+          bee->ins_buf.p[bee->ins_buf.len-1],
+          strlen(bee->ins_buf.p[bee->ins_buf.len-1]) + 1);
+      strcat(bee->ins_buf.p[bee->ins_buf.len-1], "\t");
   }
   else if(ev.ch){
     char s[7];

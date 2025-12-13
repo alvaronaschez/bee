@@ -79,7 +79,9 @@ void print_to_vscreen(const char *s, char **vs, int y_len, int x_len, int y_star
       if(j+y_start >= 0)
         vs[j+y_start][i+bn] = '\0';
       i = 0;
-    } else
+    } else if(s[bx] == '\t')
+      i++;
+    else
       i += bn;
 
     vx += vn;
