@@ -7,13 +7,12 @@
 
 struct text *text_from(char **arr, int len){
   struct text *t = malloc(sizeof(struct text));
-  t->p = malloc(len*sizeof(struct string));
+  t->p = malloc(len*sizeof(char*));
 
   for(int i=0; i<len; i++){
-    t->p[i].len = t->p[i].cap = strlen(arr[i]);
-    int l = t->p[i].len+1;
-    t->p[i].p = malloc(l);
-    strcpy(t->p[i].p, arr[i]);
+    int l = strlen(arr[i])+1;
+    t->p[i] = malloc(l);
+    strcpy(t->p[i], arr[i]);
   }
   t->len = len;
   return t;
@@ -22,9 +21,7 @@ struct text *text_from(char **arr, int len){
 void assert_text_equals(const struct text *t1, const struct text *t2){
   assert(t1->len == t2->len);
   for(int i=0; i<t1->len; i++){
-    assert(!strcmp(t1->p[i].p, t2->p[i].p));
-    assert(t1->p[i].len == t2->p[i].len);
-    //assert(t1->p[i].cap == t2->p[i].cap);
+    assert(!strcmp(t1->p[i], t2->p[i]));
   }
 }
 
