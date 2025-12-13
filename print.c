@@ -10,31 +10,6 @@ struct string_list {
   struct string_list *next;
 };
 
-static inline void print_tb(int x, int y, char *c) {
-  // print nothing, it doesn't matter
-  if (*c == '\t')
-    return;
-  if (bytelen(c) == 1)
-    tb_set_cell(x, y, *c, FG_COLOR, BG_COLOR);
-  else {
-    wchar_t wc;
-    mbstowcs(&wc, c, 1);
-    tb_set_cell(x, y, wc, FG_COLOR, BG_COLOR);
-  }
-}
-
-// TODO: replace by regular tb_print
-static inline void println(int xoff, int y, char *s) {
-  if (s == NULL)
-    return;
-  int x = 0;
-  while (*s) {
-    print_tb(x + xoff, y, s);
-    x += columnlen(s, x);
-    s += bytelen(s);
-  }
-}
-
 const char *FOOTER_FORMAT = "<%s>  \"%s\"  [=%d]  L%d C%d";
 
 static inline void print_footer(const struct bee *bee) {
@@ -109,43 +84,6 @@ void print_to_vscreen(const char *s, char **vs, int y_len, int x_len, int y_star
 
     vx += vn;
     bx += bn;
-  }
-}
-
-void print_to_vscreen_old(const char *s, char **vscreen, int y_max, int x_max, int y_start){
-  int vx = 0;
-  for(int j = y_start; j < y_max && *s; j++){
-    int i=0;
-    for(int vi = 0; vi < x_max && *s;){
-      int bn = bytelen(s);
-      int vn = columnlen(s, vx);
-      if(*s != '\t'){
-        if(vn+vi > x_max)
-          break;
-        vx += vn;
-        vi += vn;
-        if(j>=0) // print
-          for(int k=0; k<bn; k++){
-            if(j>=0 && i>=0 && j<=y_max && i<=y_max)
-              vscreen[j][i] = *s;
-            s++;
-        }
-        i += bn;
-      } else { // (*s == '\t')
-        // replace tab with spaces
-        //if(j>=0)
-        if(j>=0 && i>=0 && j<=y_max && i<=y_max)
-          vscreen[j][i] = ' ';
-        i++;
-        vi++;
-        vx++;
-        if(vn == 1)
-          s++;
-        vn--;
-      }
-    } 
-    if(j>=0 && i>=0 && j<=y_max && i<=y_max)
-      vscreen[j][i] = '\0';
   }
 }
 
@@ -247,7 +185,7 @@ void print_screen(const struct bee *bee) {
 
   // print
   for(int j=0; j<SCREEN_HEIGHT; j++){
-    println(MARGIN_LEN, j, vs[j]);
+    tb_print(MARGIN_LEN, j, FG_COLOR, BG_COLOR, vs[j]);
     if(lidx[j]>=0){
       if(lidx[j]==0)
         tb_print(0, j, MARGIN_FG, MARGIN_BG, " 0 ");
