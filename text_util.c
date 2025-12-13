@@ -29,47 +29,12 @@ int columnlen(const char* s, int col_off){
   return 1;
 }
 
-int utf8prevn(const char* s, int off, int n);
-int utf8nextn(const char* s, int off, int n){
-  if(n<0) return utf8prevn(s, off, -n);
-  int len;
-  for(; n>0; n--){
-    len = utf8len(s+off);
-    if(len == -1) return -1;
-    if(s[off+len] == '\0') return off;
-    off+=len;
-  }
-  return off;
-}
-int utf8next(const char* s, int off){
-  return utf8nextn(s, off, 1);
-}
-int utf8prevn(const char* s, int off, int n){
-  if(n<0) return utf8nextn(s, off, -n);
-  int i;
-  for(; n>0; n--){
-    for(i=0; i<4 && (s[off]&0xC0)==0x80; off--, i++);
-    if(utf8len(s+off) == 0) return -1;
-    if(off == 0) return 0;
-  }
-  return off;
-}
 int utf8prev(const char* s, int off){
   if(*s == '\0') return 0;
   off--;
   while((s[off]&0xC0) == 0x80)
     off--;
   return off;
-}
-
-char *skip_n_col(char *s, int n){
-  if(s==NULL || s[0]=='\0') return NULL;
-  while(n > 0){
-    n -= columnlen(s, 0);
-    s += bytelen(s);
-    if(*s=='\0') return NULL;
-  }
-  return s;
 }
 
 void vx_to_bx(const char *str, int vxgoal, int *bx, int *vx){
@@ -86,6 +51,71 @@ void vx_to_bx(const char *str, int vxgoal, int *bx, int *vx){
   }
 }
 
+void text_init(struct text *t){
+  t->len = 0;
+  t->p = NULL;
+}
+
+struct text *text_create(void){
+  struct text *t = malloc(sizeof(struct text));
+  text_init(t);
+  return t;
+}
+
+void text_deinit(struct text *t){
+  for(int i=0; i<t->len; i++)
+    free(t->p[i]);
+  free(t->p);
+  t->p = NULL;
+  t->len = 0;
+}
+
+void text_destroy(struct text *t){
+  text_deinit(t);
+  free(t);
+}
+
+#endif
+
+
+
+
+
+//int utf8prevn(const char* s, int off, int n);
+//int utf8nextn(const char* s, int off, int n){
+//  if(n<0) return utf8prevn(s, off, -n);
+//  int len;
+//  for(; n>0; n--){
+//    len = utf8len(s+off);
+//    if(len == -1) return -1;
+//    if(s[off+len] == '\0') return off;
+//    off+=len;
+//  }
+//  return off;
+//}
+//int utf8next(const char* s, int off){
+//  return utf8nextn(s, off, 1);
+//}
+//int utf8prevn(const char* s, int off, int n){
+//  if(n<0) return utf8nextn(s, off, -n);
+//  int i;
+//  for(; n>0; n--){
+//    for(i=0; i<4 && (s[off]&0xC0)==0x80; off--, i++);
+//    if(utf8len(s+off) == 0) return -1;
+//    if(off == 0) return 0;
+//  }
+//  return off;
+//}
+//char *skip_n_col(char *s, int n){
+//  if(s==NULL || s[0]=='\0') return NULL;
+//  while(n > 0){
+//    n -= columnlen(s, 0);
+//    s += bytelen(s);
+//    if(*s=='\0') return NULL;
+//  }
+//  return s;
+//}
+//
 // void bx_to_vx(const char *str, int vxgoal, int *bx, int *vx){}
 
 //void string_init(struct string *s){
@@ -142,31 +172,7 @@ void vx_to_bx(const char *str, int vxgoal, int *bx, int *vx){
 //  dest->p = malloc(s->cap+1);
 //  memcpy(dest->p, s->p, s->cap+1);
 //}
-
-void text_init(struct text *t){
-  t->len = 0;
-  t->p = NULL;
-}
-
-struct text *text_create(void){
-  struct text *t = malloc(sizeof(struct text));
-  text_init(t);
-  return t;
-}
-
-void text_deinit(struct text *t){
-  for(int i=0; i<t->len; i++)
-    free(t->p[i]);
-  free(t->p);
-  t->p = NULL;
-  t->len = 0;
-}
-
-void text_destroy(struct text *t){
-  text_deinit(t);
-  free(t);
-}
-
+//
 //void text_append(struct text *t, struct string s){
 //  t->len++;
 //  t->p = realloc(t->p, t->len*sizeof(struct string));
@@ -220,5 +226,4 @@ void text_destroy(struct text *t){
 //  return retval;
 //}
 
-#endif
 
