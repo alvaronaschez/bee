@@ -2,11 +2,23 @@
 
 # set -x # echo on
 
-CC=cc
+kernel_name=$(uname -s)
+
 STD=c99
-CFLAGS="-std=$STD -Wall -Wextra -pedantic -D_XOPEN_SOURCE=700 -D_DEFAULT_SOURCE"
-# use the following instead, for bsd compatibility
-#CFLAGS="-std=$STD -Wall -Wextra -pedantic -D_XOPEN_SOURCE=700 -D_BSD_SOURCE"
+
+if [ "$kernel_name" = "Linux" ]; then
+  CC=gcc
+  GDB=gdb
+  CFLAGS="-std=$STD -Wall -Wextra -pedantic -D_XOPEN_SOURCE=700 -D_DEFAULT_SOURCE"
+  echo $kernel_name
+elif [ "$kernel_name" = "OpenBSD" ]; then
+  CC=egcc
+  GDB=egdb
+  CFLAGS="-std=$STD -Wall -Wextra -pedantic -D_XOPEN_SOURCE=700 -D_BSD_SOURCE"
+  echo $kernel_name
+else
+	echo unknown system
+fi
 
 SOURCES="bee.c text.c text_util.c file.c print.c"
 
@@ -33,23 +45,21 @@ clean()
 
 debug()
 {
-  gdb -tui -p $(pgrep bee)
+  $GDB -tui -p $(pgrep bee)
 }
 
 test()
 {
-  cc -c text.c -o obj/text.o
-  cc test_text.c obj/*.o -o out/test_text
+  $CC -c text.c -o obj/text.o
+  $CC test_text.c obj/*.o -o out/test_text
   ./out/test_text
 }
 
-# OpenBSD
-# doas sysctl kern.global_ptrace=1
 test_debug()
 {
-  cc -c -g3 text.c -o obj/text.o
-  cc -g3 test_text.c obj/*.o -o out/test_text
-  gdb -tui ./out/test_text
+  $CC -c -g3 text.c -o obj/text.o
+  $CC -g3 test_text.c obj/*.o -o out/test_text
+  $GDB -tui ./out/test_text
 }
 
 
