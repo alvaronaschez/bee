@@ -22,6 +22,18 @@ fi
 
 SOURCES="bee.c text.c text_util.c file.c print.c"
 
+help()
+{
+  echo help
+  echo build
+  echo build-debug
+  echo clean
+  echo debug
+  echo test
+  echo test-debug
+  echo cloc
+}
+
 build()
 {
   for f in $SOURCES; do
@@ -63,7 +75,9 @@ test_debug()
 }
 
 
-if [ "$#" -eq 0 ] || [ "$1" = 'build' ]; then
+if [ "$#" -eq 0 ] || [ "$1" = 'help' ]; then
+  help
+elif [ "$1" = 'build' ]; then
   build
 elif [ "$1" = 'build-debug' ]; then
   build_debug
