@@ -26,9 +26,20 @@ static inline void print_footer(const struct bee *bee) {
       ;
       int len = bee->buf.len + bee->ins_buf.len -1;
       int y = bee->y + bee->ins_buf.len -1;
-      int vx = bee->vx; // TODO: wrong, should be computed
+      int cursor_col;
+      if(bee->ins_buf.len == 1){
+        char *aux = malloc(bee->bx + strlen(bee->ins_buf.p[0]) +1);
+        memcpy(aux, bee->buf.p[bee->y], bee->bx);
+        aux[bee->bx] = '\0';
+        strcat(aux, bee->ins_buf.p[0]);
+        cursor_col = bx_to_vx(strlen(aux), aux);
+        free(aux);
+      } else {
+        char *last_insert_line = bee->ins_buf.p[bee->ins_buf.len-1];
+        cursor_col = bx_to_vx(strlen(last_insert_line), last_insert_line);
+      }
       tb_printf(0, tb_height() - 1, FOOTER_FG, FOOTER_BG, FOOTER_FORMAT, mode,
-              bee->filename, len, y, vx);
+              bee->filename, len, y, cursor_col);
       break;
     default:
       tb_printf(0, tb_height() - 1, FOOTER_FG, FOOTER_BG, FOOTER_FORMAT, mode,
