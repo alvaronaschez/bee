@@ -23,10 +23,11 @@ int columnlen(const char* s, int col_off){
   if(*s=='\t')
     return TAB_LEN-col_off%TAB_LEN;
   wchar_t wc;
-  mbtowc(&wc, s, MB_CUR_MAX);
+  int n = mbtowc(&wc, s, MB_CUR_MAX);
+  assert(n>=0); // -1 -> invalid utf8 char
+  if(n==0) return 0; // s points to a null byte ('\0')
   int width = wcwidth(wc);
-  assert(width>=0); // -1 -> invalid utf8 char
-  return 1;
+  return width;
 }
 
 int utf8prev(const char* s, int off){
