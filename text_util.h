@@ -8,6 +8,8 @@ int utf8len(const char* s);
 int columnlen(const char* s, int col_off);
 
 int utf8prev(const char* s, int off);
+
+int bx_to_vx(int bx, char* s);
 void vx_to_bx(const char *str, int vxgoal, int *bx, int *vx);
 
 void text_init(struct text*);

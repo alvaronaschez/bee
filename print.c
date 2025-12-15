@@ -38,17 +38,6 @@ int vlen(char *s){
   return vx;
 }
 
-int bx_to_vx(int bx, char* s){
-  int vx = 0;
-  while(bx > 0){
-    vx += columnlen(s, vx);
-    int bn = bytelen(s);
-    bx -= bn;
-    s += bn;
-  }
-  return vx;
-}
-
 void print_to_vscreen(const char *s, char **vs, int y_len, int x_len, int y_start){
   int bx, vx, i;
   bx = vx = i = 0;

@@ -233,7 +233,6 @@ static inline void i_esc(struct bee *bee){
     return;
   }
 
-  // TODO // vx?
   int new_y = bee->y + bee->ins_buf.len-1;
   int new_bx = strlen(bee->ins_buf.p[bee->ins_buf.len-1]) + (bee->ins_buf.len == 1 ? bee->bx : 0);
 
@@ -252,10 +251,9 @@ static inline void i_esc(struct bee *bee){
   bee->undo_stack = change;
   bee->undo_stack->next = old_undo_stack;
 
-  // TODO // vx?
   bee->y = new_y;
   bee->bx = new_bx;
-  bee->vx = new_bx; // TODO
+  bee->vx = bx_to_vx(new_bx, bee->buf.p[YY]);
 
   bee->vxgoal = bee->vx;
   bee->mode = NORMAL;
