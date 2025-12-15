@@ -17,15 +17,22 @@ static inline void print_footer(const struct bee *bee) {
     tb_print(x, tb_height() - 1, FOOTER_FG, FOOTER_BG, " ");
 
   const char *mode = mode_label[bee->mode];
-
-  if (bee->mode == COMMAND) {
-    tb_printf(0, tb_height() - 1, FOOTER_FG, FOOTER_BG, "<C>  %s",
+  switch(bee->mode){
+    case COMMAND:
+      tb_printf(0, tb_height() - 1, FOOTER_FG, FOOTER_BG, "<C>  %s",
               bee->cmd_buf);
-  } else {
-    int buf_len =
-        bee->mode == INSERT ? bee->buf.len + bee->y - bee->y : bee->buf.len;
-    tb_printf(0, tb_height() - 1, FOOTER_FG, FOOTER_BG, FOOTER_FORMAT, mode,
-              bee->filename, buf_len, bee->y, bee->vx);
+      break;
+    case INSERT:
+      ;
+      int len = bee->buf.len + bee->ins_buf.len -1;
+      int y = bee->y + bee->ins_buf.len -1;
+      int vx = bee->vx; // TODO: wrong, should be computed
+      tb_printf(0, tb_height() - 1, FOOTER_FG, FOOTER_BG, FOOTER_FORMAT, mode,
+              bee->filename, len, y, vx);
+      break;
+    default:
+      tb_printf(0, tb_height() - 1, FOOTER_FG, FOOTER_BG, FOOTER_FORMAT, mode,
+              bee->filename, bee->buf.len, bee->y, bee->vx);
   }
 }
 
