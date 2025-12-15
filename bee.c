@@ -207,7 +207,7 @@ static inline void normal_read_key(struct bee *bee){
   case ':':
     n_colon(bee); break;
   case '0':
-    bee->bx = bee->vx = 0;
+    bee->bx = bee->vx = bee->vxgoal = 0;
     break;
   case '$':
     while(bee->buf.p[bee->y][bee->bx] != '\0'){
