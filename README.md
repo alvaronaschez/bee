@@ -6,7 +6,7 @@ A Vi-like text editor
 
 - Minimal dependencies (termbox2)
 
-- Around 800 lines of code (not counting termbox2)
+- Less than 850 lines of code (not counting termbox2)
 
 - Typewriter scrolling
 
