@@ -16,6 +16,11 @@ elif [ "$kernel_name" = "OpenBSD" ]; then
   GDB=egdb
   CFLAGS="-std=$STD -Wall -Wextra -pedantic -D_XOPEN_SOURCE=700 -D_BSD_SOURCE"
   #echo $kernel_name
+elif [ "$kernel_name" = "FreeBSD" ]; then
+  CC=cc
+  GDB=gdb
+  CFLAGS="-std=$STD -Wall -Wextra -pedantic -D_DEAFAULT_SOURCE -D_XOPEN_SOURCE"
+  #echo $kernel_name
 else
 	echo unknown system
 fi

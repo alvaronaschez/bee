@@ -97,6 +97,7 @@ void print_to_vscreen(const char *s, char **vs, int y_len, int x_len, int y_star
 }
 
 void print_screen(const struct bee *bee) {
+  tb_set_clear_attrs(FG_COLOR, BG_COLOR);
   tb_clear();
 
   char* vs[SCREEN_HEIGHT]; // init virtual screen
@@ -158,6 +159,8 @@ void print_screen(const struct bee *bee) {
     print_to_vscreen(s, vs, SCREEN_HEIGHT, SCREEN_WIDTH, y);
     if(y >= 0)
       lidx[y] = yyy++;
+    else
+      lidx[y] = -2;
   }
 
   // cleanup middle_lines
@@ -194,12 +197,17 @@ void print_screen(const struct bee *bee) {
 
   // print
   for(int j=0; j<SCREEN_HEIGHT; j++){
+    if(vs[j][0] == '\0' && lidx[j] == -1){
+      for(int i=0; i<tb_width(); i++)
+        tb_print(i, j, BG_COLOR, FG_COLOR, " ");
+      continue;
+    }
     tb_print(MARGIN_LEN, j, FG_COLOR, BG_COLOR, vs[j]);
     if(lidx[j]>=0){
       if(lidx[j]==0)
         tb_print(0, j, MARGIN_FG, MARGIN_BG, " 0 ");
       else
-        tb_printf(0, j, MARGIN_FG, MARGIN_BG, "%-3d ", lidx[j]);
+        tb_printf(0, j, MARGIN_FG, MARGIN_BG, "%-3d", lidx[j]);
     }
   }
 

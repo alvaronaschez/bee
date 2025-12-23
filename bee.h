@@ -4,15 +4,15 @@
 #include "text.h"
 
 #define LOCALE "en_US.UTF-8"
-#define FG_COLOR TB_WHITE
-#define BG_COLOR TB_BLACK
+#define FG_COLOR TB_BLACK
+#define BG_COLOR TB_WHITE
 #define TAB_LEN 8
 #define FOOTER_HEIGHT 1
-#define FOOTER_FG TB_GREEN
-#define FOOTER_BG TB_BLACK
+#define FOOTER_FG BG_COLOR
+#define FOOTER_BG FG_COLOR
 #define MARGIN_LEN 4
-#define MARGIN_FG TB_GREEN
-#define MARGIN_BG TB_BLACK
+#define MARGIN_FG BG_COLOR
+#define MARGIN_BG FG_COLOR
 
 #define SCREEN_HEIGHT (tb_height() - FOOTER_HEIGHT)
 #define SCREEN_WIDTH (tb_width() - MARGIN_LEN)
