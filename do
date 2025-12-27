@@ -9,12 +9,12 @@ STD=c99
 if [ "$kernel_name" = "Linux" ]; then
   CC=gcc
   GDB=gdb
-  CFLAGS="-std=$STD -Wall -Wextra -pedantic -D_XOPEN_SOURCE=700 -D_DEFAULT_SOURCE"
+  CFLAGS="-std=$STD -Wall -Wextra -pedantic -D_XOPEN_SOURCE -D_DEFAULT_SOURCE"
   #echo $kernel_name
 elif [ "$kernel_name" = "OpenBSD" ]; then
-  CC=egcc
+  CC=cc
   GDB=egdb
-  CFLAGS="-std=$STD -Wall -Wextra -pedantic -D_XOPEN_SOURCE=700 -D_BSD_SOURCE"
+  CFLAGS="-std=$STD -Wall -Wextra -pedantic -D_XOPEN_SOURCE -D_BSD_SOURCE"
   #echo $kernel_name
 elif [ "$kernel_name" = "FreeBSD" ]; then
   CC=cc
