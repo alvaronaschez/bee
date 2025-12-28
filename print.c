@@ -197,18 +197,22 @@ void print_screen(const struct bee *bee) {
 
   // print
   for(int j=0; j<SCREEN_HEIGHT; j++){
+    // print empty line outside the document
     if(vs[j][0] == '\0' && lidx[j] == -1){
       for(int i=0; i<tb_width(); i++)
         tb_print(i, j, BG_COLOR, FG_COLOR, " ");
       continue;
     }
+    // print file content
     tb_print(MARGIN_LEN, j, FG_COLOR, BG_COLOR, vs[j]);
+    // print margin
     if(lidx[j]>=0){
       if(lidx[j]==0)
         tb_print(0, j, MARGIN_FG, MARGIN_BG, " 0 ");
       else
         tb_printf(0, j, MARGIN_FG, MARGIN_BG, "%-3d", lidx[j]);
-    }
+    } else // lidx[j] == -2
+      tb_print(0, j, MARGIN_FG, MARGIN_BG, "   ");
   }
 
   // footer
