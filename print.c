@@ -200,7 +200,7 @@ void print_screen(const struct bee *bee) {
     // print empty line outside the document
     if(vs[j][0] == '\0' && lidx[j] == -1){
       for(int i=0; i<tb_width(); i++)
-        tb_print(i, j, BG_COLOR, FG_COLOR, " ");
+        tb_print(i, j, ALT_FG_COLOR, ALT_BG_COLOR, " ");
       continue;
     }
     // print file content
