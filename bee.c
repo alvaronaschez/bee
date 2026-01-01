@@ -221,9 +221,9 @@ static inline void normal_read_key(struct bee *bee){
   case TB_KEY_CTRL_R:
     n_Cr(bee); break;
   case TB_KEY_CTRL_D:
-    n_j(bee, SCREEN_HEIGHT/2); break;
+    n_j(bee, (SCREEN_HEIGHT-1)/2); break;
   case TB_KEY_CTRL_U:
-    n_k(bee, SCREEN_HEIGHT/2); break;
+    n_k(bee, (SCREEN_HEIGHT-1)/2); break;
   }
 }
 
