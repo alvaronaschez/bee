@@ -3,6 +3,7 @@
 #define TB_IMPL
 #include "termbox2.h"
 
+#include "util.h"
 #include "text_util.h"
 #include "text.h"
 #include "file.h"
