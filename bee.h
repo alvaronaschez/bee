@@ -62,5 +62,6 @@ struct bee {
 
 int bee(const char*);
 
+void change_stack_destroy(struct change_stack *cs);
 #endif
 
