@@ -5,7 +5,12 @@
 #include "util.h"
 #include "text_util.h"
 
-static inline void n_h(struct bee *bee){
+#include "insert_mode.h"
+#include "command_mode.h"
+#include "visual_mode.h"
+
+#define n_h bee_move_cursor_left
+void bee_move_cursor_left(struct bee *bee){
   if(bee->bx > 0){
     //vx_to_bx(bee->buf.p[YY].p, bee->vx-1, &bee->bx, &bee->vx);
     // that would be enough, the following is an optimization
@@ -20,7 +25,8 @@ static inline void n_h(struct bee *bee){
   bee->vxgoal = bee->vx;
 }
 
-static inline void n_l_pastend(struct bee *bee){
+#define n_l_pastend bee_move_cursor_right 
+void bee_move_cursor_right(struct bee *bee){
   // you can go past the end of the line so you can append at the end of the line or join lines
   if(bee->bx + bytelen(&bee->buf.p[YY][XX]) <= (int)strlen(bee->buf.p[YY])){
     bee->vx += columnlen(&bee->buf.p[YY][XX], bee->vx);
@@ -29,13 +35,16 @@ static inline void n_l_pastend(struct bee *bee){
   bee->vxgoal = bee->vx;
 }
 
-static inline void n_j(struct bee *bee, int n){
+#define n_j bee_move_cursor_down
+void bee_move_cursor_down(struct bee *bee, int n){
   bee->y = MIN(bee->buf.len -1, bee->y + n);
 
   // adjust column position
   vx_to_bx(bee->buf.p[YY], bee->vxgoal, &bee->bx, &bee->vx);
 }
-static inline void n_k(struct bee *bee, int n){
+
+#define n_k bee_move_cursor_up
+void bee_move_cursor_up(struct bee *bee, int n){
   bee->y = MAX(0, bee->y - n);
 
   // adjust column position
@@ -65,24 +74,10 @@ static inline void n_x(struct bee *bee){
   }
 }
 
-static inline void n_i(struct bee *bee){
-  bee->ins_buf.p = malloc(1*sizeof(char*));
-  bee->ins_buf.len = 1;
-  bee->ins_buf.p[0] = calloc(1,1);
-
-  bee->mode = INSERT;
-}
-
-static inline void n_a(struct bee *bee){
+#define n_a bee_append
+static inline void bee_append(struct bee *bee){
   n_l_pastend(bee);
-  n_i(bee);
-}
-
-static inline void n_colon(struct bee *bee){
-  bee->cmd_buf = malloc(2*sizeof(char));
-  bee->cmd_buf[0] = ':';
-  bee->cmd_buf[1] = '\0';
-  bee->mode = COMMAND;
+  to_insert_mode(bee);
 }
 
 static inline void bee_restore_cursor(struct bee *bee, const struct change_stack *ch){
@@ -161,7 +156,9 @@ void normal_read_key(struct bee *bee){
       bee->quit = 1;
     break;
   case 'i':
-    n_i(bee); break;
+    to_insert_mode(bee); break;
+  case 'v':
+    to_visual_mode(bee); break;
   case 'a':
     n_a(bee); break;
   case 'h':
@@ -177,7 +174,7 @@ void normal_read_key(struct bee *bee){
   case 'u':
     n_u(bee); break;
   case ':':
-    n_colon(bee); break;
+    to_command_mode(bee); break;
   case '0':
     bee->bx = bee->vx = bee->vxgoal = 0;
     break;

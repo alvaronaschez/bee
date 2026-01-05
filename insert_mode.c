@@ -53,6 +53,14 @@ static inline void i_backspace(struct bee *bee){
   s[n-1] = '\0';
 }
 
+void to_insert_mode(struct bee *bee){
+  bee->ins_buf.p = malloc(1*sizeof(char*));
+  bee->ins_buf.len = 1;
+  bee->ins_buf.p[0] = calloc(1,1);
+
+  bee->mode = INSERT;
+}
+
 void insert_read_key(struct bee *bee){
   struct tb_event ev;
   tb_poll_event(&ev);

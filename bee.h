@@ -28,10 +28,12 @@
 #define XX (bee->bx)
 
 enum mode {
-  NORMAL, INSERT, COMMAND
+  NORMAL, INSERT, COMMAND,
+  VISUAL, SEARCH,
 };
+#define NUM_MODES 5
 
-extern const char *mode_label[3];
+extern const char *mode_label[NUM_MODES];
 
 enum operation {INS, DEL};
 struct change_stack{
@@ -49,7 +51,13 @@ struct bee {
   struct text buf;
   char *filename;
 
+  // cursor position
+  // bx is the x position in the file (byte x)
+  // vx is the x position in the screen (visual x)
   int y, bx, vx, vxgoal;
+
+  // anchor or cursor tail in visual mode
+  int y0, bx0, vx0, vxgoal0;
 
   struct text ins_buf;
 
