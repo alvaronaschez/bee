@@ -1,6 +1,3 @@
-#ifndef TEXT_UTIL_H
-#define TEXT_UTIL_H
-
 #include "text_util.h"
 #include "bee.h"
 
@@ -38,9 +35,9 @@ int utf8prev(const char* s, int off){
   return off;
 }
 
-int bx_to_vx(int bx, char* s){
-  int vx = 0;
-  while(bx > 0){
+int bx_to_vx(int bx, int vx0, char* s){
+  int vx = vx0;
+  while(bx > 0 && *s != '\0'){
     vx += columnlen(s, vx);
     int bn = bytelen(s);
     bx -= bn;
@@ -87,155 +84,35 @@ void text_destroy(struct text *t){
   free(t);
 }
 
-#endif
+char *str_cat(const char *s1, const char *s2){
+  char *s = malloc(strlen(s1) + strlen(s2) + 1);
+  s[0] = '\0';
+  strcat(s, s1);
+  strcat(s, s2);
+  return s;
+}
 
+char *str_cat3(const char *s1, const char *s2, const char *s3){
+  char *s = malloc(strlen(s1) + strlen(s2) + strlen(s3) + 1);
+  s[0] = '\0';
+  strcat(s, s1);
+  strcat(s, s2);
+  strcat(s, s3);
+  return s;
+}
 
-
-
-
-//int utf8prevn(const char* s, int off, int n);
-//int utf8nextn(const char* s, int off, int n){
-//  if(n<0) return utf8prevn(s, off, -n);
-//  int len;
-//  for(; n>0; n--){
-//    len = utf8len(s+off);
-//    if(len == -1) return -1;
-//    if(s[off+len] == '\0') return off;
-//    off+=len;
-//  }
-//  return off;
-//}
-//int utf8next(const char* s, int off){
-//  return utf8nextn(s, off, 1);
-//}
-//int utf8prevn(const char* s, int off, int n){
-//  if(n<0) return utf8nextn(s, off, -n);
-//  int i;
-//  for(; n>0; n--){
-//    for(i=0; i<4 && (s[off]&0xC0)==0x80; off--, i++);
-//    if(utf8len(s+off) == 0) return -1;
-//    if(off == 0) return 0;
-//  }
-//  return off;
-//}
-//char *skip_n_col(char *s, int n){
-//  if(s==NULL || s[0]=='\0') return NULL;
-//  while(n > 0){
-//    n -= columnlen(s, 0);
-//    s += bytelen(s);
-//    if(*s=='\0') return NULL;
-//  }
-//  return s;
-//}
-//
-// void bx_to_vx(const char *str, int vxgoal, int *bx, int *vx){}
-
-//void string_init(struct string *s){
-//  s->cap = 8;
-//  s->len = 0;
-//  s->p = calloc(s->cap+1, sizeof(char));
-//}
-//
-//void string_deinit(struct string *s){
-//  free(s->p);
-//  s->p = NULL;
-//  s->cap = 0;
-//  s->len = 0;
-//}
-//
-//struct string *string_create(void){
-//  struct string *s = malloc(sizeof(struct string));
-//  string_init(s);
-//  return s;
-//}
-//
-//void string_destroy(struct string *s){
-//  string_deinit(s);
-//  free(s);
-//}
-//
-//void string_append(struct string *s, const char *t){
-//  int new_len = s->len + strlen(t);
-//  int new_cap = s->cap;
-//  while(new_len > new_cap)
-//    new_cap *=2;
-//  if(new_cap > s->cap){
-//    s->cap = new_cap;
-//    s->p = realloc(s->p, s->cap+1);
-//  }
-//  strcat(s->p + s->len, t);
-//  s->len = new_len;
-//}
-//
-//void string_prepend(struct string *s, const char *t){
-//  s->len += strlen(t);
-//  char *old = s->p;
-//  s->p = calloc(s->len + 1, sizeof(char));
-//  strcat(s->p, t);
-//  strcat(s->p, old);
-//  free(old);
-//}
-//
-//void string_clone(struct string *dest, const struct string *s){
-//  if(dest==s || !dest || !s)
-//    return;
-//  dest->len = s->len;
-//  dest->cap = s->cap;
-//  dest->p = malloc(s->cap+1);
-//  memcpy(dest->p, s->p, s->cap+1);
-//}
-//
-//void text_append(struct text *t, struct string s){
-//  t->len++;
-//  t->p = realloc(t->p, t->len*sizeof(struct string));
-//  t->p[t->len-1] = s;
-//}
-//
-//void text_prepend(struct text *t, struct string s){
-//  if(t->len==0){
-//    text_append(t, s);
-//    return;
-//  }
-//  t->len++;
-//  t->p = realloc(t->p, t->len*sizeof(struct string));
-//  memmove(&t->p[1], t->p, (t->len-1)*sizeof(struct string));
-//  t->p[0] = s;
-//}
-//
-//void text_clone(struct text *dest, const struct text *t){
-//  if(dest == t || !dest || !t)
-//    return;
-//  dest->len = t->len;
-//  dest->p = malloc(t->len*sizeof(struct string));
-//  for(int i=0; i<t->len; i++){
-//    string_clone(&dest->p[i], &t->p[i]);
-//  }
-//}
-//
-///**
-// * @brief Splits a string with linesbreak into a text struct
-// *
-// * @warning Takes ownership of `str`.
-// * The caller must not use or free `str` after this call.
-// */
-//struct text text_from_string(struct string *str, int nlines){
-//  struct text retval;
-//  char *s = str->p;
-//  retval.p = malloc(nlines*sizeof(struct string));
-//  retval.len = nlines;
-//
-//  for(int i=0; i<nlines; i++){
-//    char *end = strchr(s, '\n');
-//    end = end ? end : s + strlen(s);
-//    retval.p[i].p = malloc(end-s+1);
-//    memcpy(retval.p[i].p, s, end-s);
-//    retval.p[i].p[end-s] = '\0'; // null terminated string
-//    retval.p[i].cap = retval.p[i].len = end-s;
-//    s = end+1;
-//  }
-//
-//  string_deinit(str);
-//  return retval;
-//}
-
+// inclusive range in both ends
+char *str_range(const char *s0, int begin, int end){
+  int n0 = strlen(s0);
+  if(end < 0)
+    end = n0 + end;
+  int n = end - begin +1;
+  if(n > n0)
+    n = n0;
+  if(n < 0)
+    return NULL;
+  char *s = malloc(n +1);
+  strncpy(s, &s0[begin], n);
+  return s;
+}
 

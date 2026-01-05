@@ -33,7 +33,7 @@ static inline void i_esc(struct bee *bee){
 
   bee->y = new_y;
   bee->bx = new_bx;
-  bee->vx = bx_to_vx(new_bx, bee->buf.p[YY]);
+  bee->vx = bx_to_vx(new_bx, 0, bee->buf.p[YY]);
 
   bee->vxgoal = bee->vx;
   bee->mode = NORMAL;
@@ -51,6 +51,14 @@ static inline void i_backspace(struct bee *bee){
 
   // TODO: this is not gonna work with utf8, assuming all chars len = 1 (ascii)
   s[n-1] = '\0';
+}
+
+void to_insert_mode(struct bee *bee){
+  bee->ins_buf.p = malloc(1*sizeof(char*));
+  bee->ins_buf.len = 1;
+  bee->ins_buf.p[0] = calloc(1,1);
+
+  bee->mode = INSERT;
 }
 
 void insert_read_key(struct bee *bee){
