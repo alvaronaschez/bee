@@ -1,5 +1,6 @@
 #include "text_util.h"
 #include "bee.h"
+#include "util.h"
 
 #include <stdlib.h>
 #include <string.h>
@@ -101,18 +102,19 @@ char *str_cat3(const char *s1, const char *s2, const char *s3){
   return s;
 }
 
-// inclusive range in both ends
 char *str_range(const char *s0, int begin, int end){
+  assert(begin >= 0);
   int n0 = strlen(s0);
-  if(end < 0)
-    end = n0 + end;
-  int n = end - begin +1;
-  if(n > n0)
-    n = n0;
-  if(n < 0)
-    return NULL;
+  assert(end >= 0 && end <= n0);
+
+  int n = end - begin;
+  if(n <= 0){
+    char *s = calloc(1, 1);
+    return s;
+  }
   char *s = malloc(n +1);
   strncpy(s, &s0[begin], n);
+  s[n] = '\0';
   return s;
 }
 

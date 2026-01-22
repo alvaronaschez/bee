@@ -256,17 +256,20 @@ void print_screen(const struct bee *bee) {
   int m = SCREEN_HEIGHT - SCREEN_HEIGHT/2 -1;
 
   // find the position (both in the file and screen) of the first line to be printed
-  int y_screen, y_file;
+  int y_file = bee->y;
+  int y_screen;
   if(bee->mode == INSERT){
     if(bee->ins_buf.len == 1){
       y_screen = m - bx_to_vx(strlen(bee->ins_buf.p[bee->ins_buf.len-1]), bee->vx, bee->ins_buf.p[bee->ins_buf.len-1])/SCREEN_WIDTH;
     } else {
       y_screen = m - bx_to_vx(strlen(bee->ins_buf.p[bee->ins_buf.len-1]), 0, bee->ins_buf.p[bee->ins_buf.len-1])/SCREEN_WIDTH;
+      for(int i=bee->ins_buf.len-2; i>0; i--){
+        y_screen -= vlen(bee->ins_buf.p[i])/SCREEN_WIDTH+1;
+      }
+      y_screen -= bx_to_vx(strlen(bee->ins_buf.p[0]), bee->vx, bee->ins_buf.p[bee->ins_buf.len-1])/SCREEN_WIDTH+1;
     }
-    y_file = bee->y + bee->ins_buf.len - 1;
   } else {
     y_screen = m - bx_to_vx(bee->bx, 0, bee->buf.p[bee->y])/SCREEN_WIDTH;
-    y_file = bee->y;
   }
 
   // find the first line of the file to be printed and its offset respect to the screen
@@ -282,11 +285,56 @@ void print_screen(const struct bee *bee) {
     vs[j][0] = '\0';
   }
 
-  /* map virtual screen to file*/
-  while(y_screen < SCREEN_HEIGHT && y_file < bee->buf.len){
-    print_to_vscreen(bee->buf.p[y_file], vs, SCREEN_HEIGHT, SCREEN_WIDTH, y_screen);
-    y_screen += vlen(bee->buf.p[y_file])/SCREEN_WIDTH+1;
-    y_file ++;
+  /* map virtual screen to file */
+  if(bee->mode == INSERT){
+    // before cursor line
+    while(y_screen < SCREEN_HEIGHT && y_file < bee->buf.len && y_file < bee->y){
+      print_to_vscreen(bee->buf.p[y_file], vs, SCREEN_HEIGHT, SCREEN_WIDTH, y_screen);
+      y_screen += vlen(bee->buf.p[y_file])/SCREEN_WIDTH+1;
+      y_file ++;
+    }
+
+    // insert lines
+    if(bee->ins_buf.len == 1){
+      char *begin = str_range(bee->buf.p[y_file], 0, bee->bx);
+      char *aux = str_cat3(begin, bee->ins_buf.p[0], &bee->buf.p[y_file][bee->bx]);
+      print_to_vscreen(aux, vs, SCREEN_HEIGHT, SCREEN_WIDTH, y_screen);
+      y_screen += vlen(aux)/SCREEN_WIDTH+1;
+      y_file ++;
+      free(begin);
+      free(aux);
+    } else if(bee->ins_buf.len > 1) {
+      char *begin = str_range(bee->buf.p[y_file], 0, bee->bx);
+      char *aux1 = str_cat(begin, bee->ins_buf.p[0]);
+      char *aux2 = str_cat(bee->ins_buf.p[bee->ins_buf.len-1], &bee->buf.p[y_file][bee->bx]);
+      for(int i=0; i<bee->ins_buf.len; i++){
+        if(y_screen >= SCREEN_HEIGHT)
+          break;
+        char *aux = bee->ins_buf.p[i];
+        if(i==0) aux = aux1;
+        if(i==bee->ins_buf.len-1) aux = aux2;
+
+        print_to_vscreen(aux, vs, SCREEN_HEIGHT, SCREEN_WIDTH, y_screen);
+        y_screen += vlen(aux)/SCREEN_WIDTH+1;
+      }
+      y_file ++;
+      free(begin);
+      free(aux1);
+      free(aux2);
+    }
+
+    // after insert lines
+    while(y_screen < SCREEN_HEIGHT && y_file < bee->buf.len){
+      print_to_vscreen(bee->buf.p[y_file], vs, SCREEN_HEIGHT, SCREEN_WIDTH, y_screen);
+      y_screen += vlen(bee->buf.p[y_file])/SCREEN_WIDTH+1;
+      y_file ++;
+    }
+  } else {
+    while(y_screen < SCREEN_HEIGHT && y_file < bee->buf.len){
+      print_to_vscreen(bee->buf.p[y_file], vs, SCREEN_HEIGHT, SCREEN_WIDTH, y_screen);
+      y_screen += vlen(bee->buf.p[y_file])/SCREEN_WIDTH+1;
+      y_file ++;
+    }
   }
 
   /* print */
@@ -299,7 +347,25 @@ void print_screen(const struct bee *bee) {
     tb_print(MARGIN_LEN, j, FG_COLOR, BG_COLOR, vs[j]);
   }
 
-  tb_set_cursor(0, m);
+  /* footer */
+  print_footer(bee);
+
+  /* cursor */
+  int cursor_col;
+  if(bee->mode != INSERT){
+    cursor_col= bx_to_vx(bee->bx, 0, bee->buf.p[bee->y]);
+  } else if(bee->ins_buf.len == 1) {
+    char *aux = malloc(bee->bx + strlen(bee->ins_buf.p[0]) +1);
+    memcpy(aux, bee->buf.p[bee->y], bee->bx);
+    aux[bee->bx] = '\0';
+    strcat(aux, bee->ins_buf.p[0]);
+    cursor_col = bx_to_vx(strlen(aux), 0, aux);
+    free(aux);
+  } else {
+    char *last_insert_line = bee->ins_buf.p[bee->ins_buf.len-1];
+    cursor_col = bx_to_vx(strlen(last_insert_line), 0, last_insert_line);
+  }
+  tb_set_cursor( cursor_col % SCREEN_WIDTH + MARGIN_LEN, m);
 
   tb_present();
 
@@ -309,5 +375,4 @@ void print_screen(const struct bee *bee) {
   }
 
 }
-
 
