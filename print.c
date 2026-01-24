@@ -201,7 +201,34 @@ void print_screen(const struct bee *bee) {
 
   for(int j=0; j<SCREEN_HEIGHT; j++){
     // print file content
-    tb_print(MARGIN_LEN, j, FG_COLOR, BG_COLOR, vs[j].p);
+    if(bee->mode == VISUAL){
+      int y0, y1, bx0, bx1, vx0, vx1;
+      y0 = bee->y0; y1 = bee->y; bx0 = bee->bx0; bx1 = bee->bx; vx0 = bee->vx0; vx1 = bee->vx;
+      if(y0>y1 || (y0==y1 && bx0 > bx1)){
+        SWAP_INT(y0,y1); SWAP_INT(bx0, bx1); SWAP_INT(vx0, vx1);
+      }
+      int y = vs[j].y_file;
+      if(y0 <= y && y <= y1){
+        // TODO
+        if(y0 < y && y < y1)
+          tb_print(MARGIN_LEN, j, BG_COLOR, FG_COLOR, vs[j].p);
+        else if(y0 == y && y == y1){
+          tb_print(MARGIN_LEN, j, FG_COLOR, BG_COLOR, vs[j].p);
+          tb_print(MARGIN_LEN+bx0, j, BG_COLOR, FG_COLOR, vs[j].p+bx0);
+          tb_print(MARGIN_LEN+bx1, j, FG_COLOR, BG_COLOR, vs[j].p+bx1);
+        } else if(y0 == y){
+          tb_print(MARGIN_LEN, j, FG_COLOR, BG_COLOR, vs[j].p);
+          tb_print(MARGIN_LEN+bx0, j, BG_COLOR, FG_COLOR, vs[j].p+bx0);
+        } else if(y1 == y){
+          tb_print(MARGIN_LEN, j, BG_COLOR, FG_COLOR, vs[j].p);
+          tb_print(MARGIN_LEN+bx1, j, FG_COLOR, BG_COLOR, vs[j].p+bx1);
+        }
+      }
+      else
+        tb_print(MARGIN_LEN, j, FG_COLOR, BG_COLOR, vs[j].p);
+    } else {
+      tb_print(MARGIN_LEN, j, FG_COLOR, BG_COLOR, vs[j].p);
+    }
     // print margin
     if(vs[j].y_file == bee->y && vs[j].bx_file == 0)
         tb_print(0, j, MARGIN_FG, MARGIN_BG, " 0 ");
