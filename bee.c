@@ -4,6 +4,7 @@
 #include "termbox2.h"
 
 #include "text.h"
+#include "string.h"
 #include "file.h"
 #include "print.h"
 #include "normal_mode.h"

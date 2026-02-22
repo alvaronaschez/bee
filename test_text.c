@@ -178,6 +178,13 @@ void test_del10(void){
   text_delete(t, del_cmd);
   assert_text_equals(t, expected);
 }
+void test_del11(void){
+  struct text *t = text_from((char *[]){"foo", "Hello blablabla World!", "jam"}, 3);
+  struct text *expected = text_from((char *[]){"foo", "jam"}, 2);
+  struct delete_cmd del_cmd = {.y=1, .x=0, .yy=1, .xx=22};
+  text_delete(t, del_cmd);
+  assert_text_equals(t, expected);
+}
 
 void test_ins1(void){
   struct text *o = text_from((char *[]){"foo", "bar", "jam"}, 3);
@@ -284,6 +291,7 @@ int main(void) {
   test_del8();
   test_del9();
   test_del10();
+  test_del11();
 
   test_ins1();
   test_ins2();

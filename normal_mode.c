@@ -61,7 +61,7 @@ static inline void n_x(struct bee *bee){
     .y = bee->y, .bx = bee->bx, .vx = bee->vx,
     .op = INS,
   };
-  int blen =  bytelen(&bee->buf.p[YY][XX]);
+  int blen =  bytelen(&bee->buf.p[bee->y][bee->bx]);
   change->cmd.i = text_delete(&bee->buf,
       (struct delete_cmd){.x=bee->bx, .y=bee->y, .xx=bee->bx+blen-1, .yy=bee->y});
   bee->undo_stack = change;
