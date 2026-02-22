@@ -5,7 +5,7 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include "text_util.h"
+#include "string.h"
 
 static inline void i_esc(struct bee *bee){
   if(bee->ins_buf.len == 0){

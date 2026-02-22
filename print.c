@@ -4,6 +4,7 @@
 #include "termbox2.h"
 #include "text_util.h"
 #include "util.h"
+#include "string.h"
 #include <stdbool.h>
 
 struct vs_line {
@@ -47,15 +48,6 @@ static inline void print_footer(const struct bee *bee) {
       tb_printf(0, tb_height() - 1, FOOTER_FG, FOOTER_BG, FOOTER_FORMAT, mode,
               bee->filename, bee->buf.len, bee->y, bee->vx);
   }
-}
-
-int vlen(char *s){
-  int vx = 0;
-  while(*s != '\0'){
-    vx += columnlen(s, vx);
-    s += bytelen(s);
-  }
-  return vx;
 }
 
 void print_to_vscreen(const char *s, struct vs_line vs[], int y_len, int x_len, int y_start, int y_file){
@@ -153,7 +145,7 @@ void print_screen(const struct bee *bee) {
 
     // insert lines
     if(bee->ins_buf.len == 1){
-      char *begin = str_range(bee->buf.p[y_file], 0, bee->bx);
+      char *begin = str_copy_range(bee->buf.p[y_file], 0, bee->bx);
       char *aux = str_cat3(begin, bee->ins_buf.p[0], &bee->buf.p[y_file][bee->bx]);
       print_to_vscreen(aux, vs, SCREEN_HEIGHT, SCREEN_WIDTH, y_screen, y_file);
       y_screen += vlen(aux)/SCREEN_WIDTH+1;
@@ -161,7 +153,7 @@ void print_screen(const struct bee *bee) {
       free(begin);
       free(aux);
     } else if(bee->ins_buf.len > 1) {
-      char *begin = str_range(bee->buf.p[y_file], 0, bee->bx);
+      char *begin = str_copy_range(bee->buf.p[y_file], 0, bee->bx);
       char *aux1 = str_cat(begin, bee->ins_buf.p[0]);
       char *aux2 = str_cat(bee->ins_buf.p[bee->ins_buf.len-1], &bee->buf.p[y_file][bee->bx]);
       for(int i=0; i<bee->ins_buf.len; i++){

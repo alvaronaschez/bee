@@ -3,7 +3,7 @@
 #include "termbox2.h"
 
 #include "util.h"
-#include "text_util.h"
+#include "string.h"
 
 #include "insert_mode.h"
 #include "command_mode.h"

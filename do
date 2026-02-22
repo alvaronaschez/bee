@@ -14,7 +14,7 @@ if [ "$kernel_name" = "Linux" ]; then
 elif [ "$kernel_name" = "FreeBSD" ]; then
   CC=cc
   GDB=gdb
-  CFLAGS="-std=$STD -Wall -Wextra -pedantic -D_DEAFAULT_SOURCE -D_XOPEN_SOURCE"
+  CFLAGS="-std=$STD -Wall -Wextra -pedantic -D_XOPEN_SOURCE -D_DEAFAULT_SOURCE"
   #echo $kernel_name
 elif [ "$kernel_name" = "OpenBSD" ]; then
   CC=cc
@@ -73,8 +73,8 @@ debug()
 
 test()
 {
-  $CC -c text.c -o obj/text.o
-  $CC test_text.c obj/*.o -o out/test_text
+  $CC $CFLAGS -c text.c -o obj/text.o
+  $CC $CFLAGS test_text.c obj/*.o -o out/test_text
   ./out/test_text
 }
 
