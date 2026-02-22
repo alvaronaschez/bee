@@ -25,7 +25,7 @@ else
 	echo unknown system
 fi
 
-SOURCES="bee.c text.c text_util.c file.c print.c normal_mode.c insert_mode.c command_mode.c visual_mode.c"
+SOURCES="bee.c text.c file.c print.c normal_mode.c insert_mode.c command_mode.c visual_mode.c"
 
 help()
 {

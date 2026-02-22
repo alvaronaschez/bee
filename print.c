@@ -2,7 +2,7 @@
 
 #include "bee.h"
 #include "termbox2.h"
-#include "text_util.h"
+#include "text.h"
 #include "util.h"
 #include "string.h"
 #include <stdbool.h>
