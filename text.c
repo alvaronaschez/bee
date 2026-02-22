@@ -21,14 +21,19 @@ static void text_init_from_text(struct text* this, const struct text* other){
   }
 }
 
-void text_delete_line_range(struct text *txt, int begin, int len){
-  for(int i=0; i<len; i++)
-    if(begin+i < txt->len)
-      free(txt->p[begin+i]);
-  if(begin + len < txt->len)
-    memmove(&txt->p[begin], &txt->p[begin + len], (txt->len - len)*sizeof(char*));
-  txt->len -= len;
-  txt->p = realloc(txt->p, txt->len*sizeof(char*));
+void text_delete_line_range(struct text *txt, int y, int yy){
+    int lines_to_delete = yy - y + 1;
+    for(int i=0; i<lines_to_delete; i++)
+      if(y+i < txt->len)
+        free(txt->p[y+i]);
+    if(yy+1 < txt->len){
+      memmove(
+          &txt->p[y],
+          &txt->p[yy+1],
+          (txt->len-yy)*sizeof(char*));
+    }
+    txt->len -=lines_to_delete;
+    txt->p = realloc(txt->p, txt->len*sizeof(char*));
 }
 
 static inline struct insert_cmd delete_cmd_inverse(const struct text*, const struct delete_cmd*);
@@ -92,7 +97,7 @@ struct insert_cmd text_delete(struct text *txt, const struct delete_cmd cmd) {
   if(y < yy){
     str_delete_from(&txt->p[y], x);
     str_append(&txt->p[y], &txt->p[yy][xx+1]);
-    text_delete_line_range(txt, y+1, yy - y);
+    text_delete_line_range(txt, y+1, yy);
   } else { // y == yy
     str_delete_range(&txt->p[y], x, xx);
   }
