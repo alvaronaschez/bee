@@ -68,7 +68,7 @@ struct bee {
   char quit;
 };
 
-int bee(const char*);
+int bee_run(const char*);
 
 void change_stack_destroy(struct change_stack *cs);
 #endif

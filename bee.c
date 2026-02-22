@@ -72,7 +72,7 @@ static inline void bee_destroy(struct bee *bee){
   change_stack_destroy(bee->redo_stack);
 }
 
-int bee(const char* filename){
+int bee_run(const char* filename){
   setlocale(LC_CTYPE, LOCALE);
 
   struct bee bee;

@@ -1,5 +1,5 @@
-//#ifndef STRING_H
-//#define STRING_H
+#ifndef STRING_H
+#define STRING_H
 
 #include "bee.h"
 
@@ -7,8 +7,6 @@
 #include <string.h>
 #include <assert.h>
 #include <wchar.h>
-
-#define COMMENT(ignored)
 
 static inline char *str_cat(const char *s1, const char *s2){
   char *s = malloc(strlen(s1) + strlen(s2) + 1);
@@ -67,40 +65,41 @@ static inline char *str_copy_range(const char *this, int begin, int end){
   return s;
 }
 
-#define str_delete_from(this, from) {\
-  this = realloc(this, from + 1);\
-  this[from] = '\0';\
+static inline void str_delete_from(char **this, int from) {
+  *this = realloc(*this, from + 1);
+  (*this)[from] = '\0';
 }
 
-#define str_delete_n(this, n) {\
-  int old_len = strlen(this);\
-  int new_len = old_len - n;\
-  memmove(this, &this[n], old_len - n);\
-  this = realloc(this, new_len + 1);\
+static inline void str_delete_first_n(char **this, int n) {
+  int old_len = strlen(*this);
+  int new_len = old_len - n;
+  memmove(*this, &(*this)[n], old_len - n);
+  *this = realloc(*this, new_len + 1);
 }
 
-#define str_delete_range(this, begin, end) {\
-  int old_len = strlen(this);\
-  int range_len = end - begin + 1;\
-  int new_len = old_len - range_len;\
-  memmove(&this[begin], &this[end + 1], old_len - end); COMMENT(we copy the null byte)\
-  this = realloc(this, new_len + 1);\
+static inline void str_delete_range(char **this, int begin, int end) {
+  int old_len = strlen(*this);
+  int range_len = end - begin + 1;
+  int new_len = old_len - range_len;
+  memmove(&(*this)[begin], &(*this)[end + 1], old_len - end); // we copy the null byte
+  *this = realloc(*this, new_len + 1);
 }
 
-#define str_append(this, other) {\
-  this = realloc(this, strlen(this) + strlen(other) + 1);\
-  strcat(this, other);\
+static inline void str_append(char **this, const char *other){
+  *this = realloc(*this, strlen(*this) + strlen(other) + 1);
+  strcat(*this, other);
 }
 
-#define str_prepend(this, other) {\
-  int this_len = strlen(this);\
-  int other_len = strlen(other);\
-  this = realloc(this, this_len + other_len + 1);\
-  memmove(&this[other_len], this, this_len + 1);\
-  memcpy(this, other, other_len);\
+static inline void str_prepend(char **this, const char *other){
+  int this_len = strlen(*this);
+  int other_len = strlen(other);
+  *this = realloc(*this, this_len + other_len + 1);
+  memmove(&(*this)[other_len], *this, this_len + 1);
+  memcpy(*this, other, other_len);
 }
 
-//static inline void str_insert(char *this, const char *other, int i){
+
+//static inline void str_insert(char **this, const char *other, int i){
 //  // TODO
 //  // generalized str_append and str_prepend
 //}
@@ -170,4 +169,4 @@ static inline int vlen(char *s){
   return vx;
 }
 
-//#endif
+#endif

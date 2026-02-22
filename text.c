@@ -41,11 +41,11 @@ void _text_insert(struct text *this, const struct insert_cmd cmd) {
 
   // first line
   char *first = str_copy_n(this->p[y], x);
-  str_prepend(other.p[0], first);
+  str_prepend(&other.p[0], first);
   free(first);
 
   // last line
-  str_append(other.p[other.len-1], &this->p[y][x]);
+  str_append(&other.p[other.len-1], &this->p[y][x]);
 
   // copy new text
   free(this->p[y]);
@@ -90,11 +90,11 @@ struct insert_cmd text_delete(struct text *txt, const struct delete_cmd cmd) {
   }
 
   if(y < yy){
-    str_delete_from(txt->p[y], x);
-    str_append(txt->p[y], &txt->p[yy][xx+1]);
+    str_delete_from(&txt->p[y], x);
+    str_append(&txt->p[y], &txt->p[yy][xx+1]);
     text_delete_line_range(txt, y+1, yy - y);
   } else { // y == yy
-    str_delete_range(txt->p[y], x, xx);
+    str_delete_range(&txt->p[y], x, xx);
   }
 
   if(txt->len==0){
