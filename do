@@ -11,21 +11,21 @@ if [ "$kernel_name" = "Linux" ]; then
   GDB=gdb
   CFLAGS="-std=$STD -Wall -Wextra -pedantic -D_XOPEN_SOURCE -D_DEFAULT_SOURCE"
   #echo $kernel_name
+elif [ "$kernel_name" = "FreeBSD" ]; then
+  CC=cc
+  GDB=gdb
+  CFLAGS="-std=$STD -Wall -Wextra -pedantic -D_XOPEN_SOURCE -D_DEAFAULT_SOURCE"
+  #echo $kernel_name
 elif [ "$kernel_name" = "OpenBSD" ]; then
   CC=cc
   GDB=egdb
   CFLAGS="-std=$STD -Wall -Wextra -pedantic -D_XOPEN_SOURCE -D_BSD_SOURCE"
   #echo $kernel_name
-elif [ "$kernel_name" = "FreeBSD" ]; then
-  CC=cc
-  GDB=gdb
-  CFLAGS="-std=$STD -Wall -Wextra -pedantic -D_DEAFAULT_SOURCE -D_XOPEN_SOURCE"
-  #echo $kernel_name
 else
 	echo unknown system
 fi
 
-SOURCES="bee.c text.c text_util.c file.c print.c normal_mode.c insert_mode.c command_mode.c"
+SOURCES="bee.c text.c file.c print.c normal_mode.c insert_mode.c command_mode.c visual_mode.c"
 
 help()
 {
@@ -62,13 +62,19 @@ clean()
 
 debug()
 {
-  $GDB -tui -p $(pgrep bee)
+  #$GDB -tui -p $(pgrep bee) -se ./bee
+  #$GDB -tui bee --pid=$(pgrep bee)
+  if [ "$kernel_name" = "OpenBSD" ]; then
+    doas $GDB -tui bee -p $(pgrep bee)
+  else
+    $GDB -tui bee -p $(pgrep bee)
+  fi
 }
 
 test()
 {
-  $CC -c text.c -o obj/text.o
-  $CC test_text.c obj/*.o -o out/test_text
+  $CC $CFLAGS -c text.c -o obj/text.o
+  $CC $CFLAGS test_text.c obj/*.o -o out/test_text
   ./out/test_text
 }
 

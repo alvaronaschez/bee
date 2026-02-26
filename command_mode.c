@@ -35,6 +35,13 @@ static inline void c_enter(struct bee *bee){
   bee->mode = NORMAL;
 }
 
+void to_command_mode(struct bee *bee){
+  bee->cmd_buf = malloc(2*sizeof(char));
+  bee->cmd_buf[0] = ':';
+  bee->cmd_buf[1] = '\0';
+  bee->mode = COMMAND;
+}
+
 void command_read_key(struct bee *bee){
   struct tb_event ev;
   tb_poll_event(&ev);

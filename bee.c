@@ -4,21 +4,24 @@
 #include "termbox2.h"
 
 #include "text.h"
+#include "string.h"
 #include "file.h"
 #include "print.h"
 #include "normal_mode.h"
 #include "insert_mode.h"
 #include "command_mode.h"
+#include "visual_mode.h"
 
-//#include <assert.h>
 #include <stdio.h>
-//#include <limits.h>
 #include <stdlib.h>
-//#include <wchar.h>
 #include <locale.h>
+//#include <assert.h>
+//#include <limits.h>
+//#include <wchar.h>
 //#include <libgen.h>
 
-const char *mode_label[3] = {"N", "I", "C"};
+const char *mode_label[NUM_MODES] = {
+  "N", "I", "C", "V", "S"};
 
 void change_stack_destroy(struct change_stack *cs){
   struct change_stack *aux;
@@ -42,6 +45,8 @@ static inline void read_key(struct bee *bee){
     insert_read_key(bee); break;
   case COMMAND:
     command_read_key(bee); break;
+  case VISUAL:
+    visual_read_key(bee); break;
   default:
     break;
   }
@@ -68,7 +73,7 @@ static inline void bee_destroy(struct bee *bee){
   change_stack_destroy(bee->redo_stack);
 }
 
-int bee(const char* filename){
+int bee_run(const char* filename){
   setlocale(LC_CTYPE, LOCALE);
 
   struct bee bee;

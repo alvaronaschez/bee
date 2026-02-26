@@ -7,5 +7,5 @@ int main(int argc, char **argv){
     printf("missing file name\naborting\n");
     return 1;
   }
-  return bee(argv[1]);
+  return bee_run(argv[1]);
 }
