@@ -83,15 +83,16 @@ struct insert_cmd text_delete(struct text *txt, const struct delete_cmd cmd) {
 
   int x = cmd.x; int y = cmd.y; int xx = cmd.xx; int yy = cmd.yy;
 
-  // if the cursor tail is at the last line and past the last character
-  if(yy == txt->len-1 && xx == (int)strlen(txt->p[yy]))
-    xx--;
-
-  if(x == (int)strlen(txt->p[y])){} // TODO: is there anything to do here
   // if the cursor tail is past the last character of the line
   if(xx == (int)strlen(txt->p[yy])){
-    yy++;
-    xx=-1;
+   // if it is the last line of the file
+    if(yy == txt->len-1){
+      xx--;
+    }
+    else {
+      yy++;
+      xx=-1; // quite hacky
+    }
   }
 
   if(y < yy){
@@ -102,6 +103,7 @@ struct insert_cmd text_delete(struct text *txt, const struct delete_cmd cmd) {
     str_delete_range(&txt->p[y], x, xx);
   }
 
+  // in case we deleted the whole buffer
   if(txt->len==0){
     txt->len=1;
     txt->p = malloc(sizeof(char*));
