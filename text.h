@@ -20,6 +20,8 @@ struct delete_cmd text_insert(struct text*, struct insert_cmd);
 
 struct insert_cmd text_delete(struct text*, const struct delete_cmd); 
 
+struct text *text_copy_range(struct text*, int y, int x, int yy, int xx);
+
 void text_init(struct text*);
 struct text *text_create(void);
 void text_deinit(struct text*);

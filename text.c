@@ -179,7 +179,27 @@ void text_deinit(struct text *t){
 }
 
 void text_destroy(struct text *t){
+  if(t == NULL)
+    return;
   text_deinit(t);
   free(t);
 }
 
+struct text *text_copy_range(struct text* this, int y, int x, int yy, int xx) {
+  struct text *other = text_create();
+
+  other->len = yy - y + 1;
+  other->p = malloc(other->len * sizeof(char*));
+
+  if(other->len == 1){
+    other->p[0] = str_copy_range(this->p[y], x, xx +1);
+  } else {
+    other->p[0] = str_copy_from(this->p[y], x);
+    for(int i=1; i<other->len-2; i++){
+      other->p[i] = str_copy(this->p[y+i]);
+    }
+    other->p[other->len-1] = str_copy_n(this->p[y], xx);
+  }
+
+  return other;
+}

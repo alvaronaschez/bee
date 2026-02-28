@@ -50,6 +50,7 @@ static inline char *str_copy_n(const char *this, int n){
 }
 
 static inline char *str_copy_range(const char *this, int begin, int end){
+  /* copy from 'begin' to 'end' -1 */
   assert(begin >= 0);
   int n0 = strlen(this);
   assert(end >= 0 && end <= n0);

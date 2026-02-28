@@ -26,10 +26,11 @@ static inline void exit_visual_mode(struct bee  *bee){
 }
 
 static inline void v_x(struct bee *bee){
+  // clear redo stack
   change_stack_destroy(bee->redo_stack);
   bee->redo_stack = NULL;
-  struct change_stack *old_undo_stack = bee->undo_stack;
 
+  // apply change and save change to undo_stack
   struct change_stack *change = malloc(sizeof(struct change_stack));
   *change = (struct change_stack){
     .y = bee->y0, .bx = bee->bx0, .vx = bee->vx0,
@@ -38,6 +39,7 @@ static inline void v_x(struct bee *bee){
   int blen =  bytelen(&bee->buf.p[bee->y][bee->bx]);
   change->cmd.i = text_delete(&bee->buf,
       (struct delete_cmd){.x=bee->bx0, .y=bee->y0, .xx=bee->bx+blen-1, .yy=bee->y});
+  struct change_stack *old_undo_stack = bee->undo_stack;
   bee->undo_stack = change;
   bee->undo_stack->next = old_undo_stack;
 

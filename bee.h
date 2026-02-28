@@ -61,9 +61,11 @@ struct bee {
 
   struct text ins_buf;
 
-  char* cmd_buf;
+  char *cmd_buf;
 
   struct change_stack *undo_stack, *redo_stack;
+
+  struct text *clipboard;
 
   char quit;
 };
@@ -71,5 +73,11 @@ struct bee {
 int bee_run(const char*);
 
 void change_stack_destroy(struct change_stack *cs);
+
+void bee_move_cursor_up(struct bee *bee, int n);
+void bee_move_cursor_down(struct bee *bee, int n);
+void bee_move_cursor_left(struct bee *bee);
+void bee_move_cursor_right(struct bee *bee);
+
 #endif
 

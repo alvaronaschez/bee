@@ -11,6 +11,7 @@
 #include "insert_mode.h"
 #include "command_mode.h"
 #include "visual_mode.h"
+#include "util.h"
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -71,6 +72,7 @@ static inline void bee_destroy(struct bee *bee){
     free(bee->filename);
   change_stack_destroy(bee->undo_stack);
   change_stack_destroy(bee->redo_stack);
+  text_destroy(bee->clipboard);
 }
 
 int bee_run(const char* filename){
@@ -103,3 +105,40 @@ int bee_run(const char* filename){
   return 0;
 }
 
+void bee_move_cursor_left(struct bee *bee){
+  if(bee->bx > 0){
+    //vx_to_bx(bee->buf.p[YY].p, bee->vx-1, &bee->bx, &bee->vx);
+    // that would be enough, the following is an optimization
+    if ( bee->buf.p[YY][XX-1] == '\t' ) {
+      vx_to_bx(bee->buf.p[YY], bee->vx-1, &bee->bx, &bee->vx);
+    } else {
+      bee->bx = utf8prev(bee->buf.p[YY], bee->bx);
+      bee->vx -= columnlen(&bee->buf.p[YY][XX], bee->vx);
+    }
+    //autoscroll_x(bee);
+  }
+  bee->vxgoal = bee->vx;
+}
+
+void bee_move_cursor_right(struct bee *bee){
+  // you can go past the end of the line so you can append at the end of the line or join lines
+  if(bee->bx + bytelen(&bee->buf.p[YY][XX]) <= (int)strlen(bee->buf.p[YY])){
+    bee->vx += columnlen(&bee->buf.p[YY][XX], bee->vx);
+    bee->bx += bytelen(&bee->buf.p[YY][XX]);
+  }
+  bee->vxgoal = bee->vx;
+}
+
+void bee_move_cursor_down(struct bee *bee, int n){
+  bee->y = MIN(bee->buf.len -1, bee->y + n);
+
+  // adjust column position
+  vx_to_bx(bee->buf.p[YY], bee->vxgoal, &bee->bx, &bee->vx);
+}
+
+void bee_move_cursor_up(struct bee *bee, int n){
+  bee->y = MAX(0, bee->y - n);
+
+  // adjust column position
+  vx_to_bx(bee->buf.p[YY], bee->vxgoal, &bee->bx, &bee->vx);
+}
