@@ -101,8 +101,7 @@ static inline void str_prepend(char **this, const char *other){
 
 
 //static inline void str_insert(char **this, const char *other, int i){
-//  // TODO
-//  // generalized str_append and str_prepend
+//  // TODO: generalized str_append and str_prepend
 //}
 
 /* misc */

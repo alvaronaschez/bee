@@ -57,9 +57,8 @@ static inline void v_x(struct bee *bee){
   exit_visual_mode(bee);
 }
 
-static inline void bee_copy(struct bee *bee, int x, int y, int xx, int yy){
-  // TODO
-  // copy to clipboard and exit visual mode
+static inline void bee_copy(struct bee *bee, int y, int x, int yy, int xx){
+  // TODO: copy to clipboard and exit visual mode
 }
 
 void visual_read_key(struct bee *bee){
@@ -79,7 +78,7 @@ void visual_read_key(struct bee *bee){
   case 'd':
     v_x(bee); break;
   case 'y':
-    bee_copy(bee, bee->y0, bee->bx0, bee->bx, bee->y);
+    bee_copy(bee, bee->y0, bee->bx0, bee->y, bee->bx);
   }
   else if(ev.key!=0) switch(ev.key){
   case TB_KEY_ESC:
