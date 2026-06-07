@@ -27,31 +27,37 @@ static inline void exit_visual_mode(struct bee  *bee){
   bee->mode = NORMAL;
 }
 
-// TODO: it fails when cursor tail > cursor head
-// implement something like: if ct > ch -> swap(ct, ch)
-// something similar is done in print.c:199
-// it is too complex anyway, we should refactor it to make it readable
+// TODO: it is too complex, we should refactor it to make it readable
 static inline void v_x(struct bee *bee){
   // clear redo stack
   change_stack_destroy(bee->redo_stack);
   bee->redo_stack = NULL;
 
+  // ct = cursor_tail; ch = cursor_head; if ct > ch -> swap(ct, ch)
+  int y0, y1, bx0, bx1, vx0, vx1, vxgoal0, vxgoal1;
+  y0 = bee->y0; y1 = bee->y; bx0 = bee->bx0; bx1 = bee->bx; vx0 = bee->vx0; vx1 = bee->vx;
+  vxgoal0 = bee->vxgoal0; vxgoal1 = bee->vxgoal;
+  if(y0>y1 || (y0==y1 && bx0 > bx1)){
+    SWAP_INT(y0,y1); SWAP_INT(bx0, bx1); SWAP_INT(vx0, vx1);
+    SWAP_INT(vxgoal0, vxgoal1);
+  }
+
   // apply change and save change to undo_stack
   struct change_stack *change = malloc(sizeof(struct change_stack));
   *change = (struct change_stack){
-    .y = bee->y0, .bx = bee->bx0, .vx = bee->vx0,
+    .y = y0, .bx = bx0, .vx = vx0,
     .op = INS,
   };
   int blen =  bytelen(&bee->buf.p[bee->y][bee->bx]);
   change->cmd.i = text_delete(&bee->buf,
-      (struct delete_cmd){.x=bee->bx0, .y=bee->y0, .xx=bee->bx+blen-1, .yy=bee->y});
+      (struct delete_cmd){.x=bx0, .y=y0, .xx=bx1+blen-1, .yy=y1});
   struct change_stack *old_undo_stack = bee->undo_stack;
   bee->undo_stack = change;
   bee->undo_stack->next = old_undo_stack;
 
-  bee->y = bee->y0;
-  bee->bx = bee->bx0;
-  bee->vx = bee->vx0;
+  bee->y = y0;
+  bee->bx = bx0;
+  bee->vx = vx0;
   bee->vxgoal = bee->vxgoal0;
 
   if(bee->bx != 0 && bee->bx == (int)strlen(bee->buf.p[bee->y]))
