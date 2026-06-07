@@ -46,10 +46,21 @@ struct change_stack{
   } cmd;
 };
 
+// should we make cursor a struct on it's own??
+//struct cursor {
+//  int y;
+//  int bx;
+//  int vx;
+//  int vxgoal;
+//};
+
 struct bee {
   enum mode mode;
   struct text buf;
   char *filename;
+
+  //struct cursor *ch; // cursor head
+  //struct cursor *ct; // cursor tail
 
   // cursor position
   // bx is the x position in the file (byte x)
@@ -65,7 +76,7 @@ struct bee {
 
   struct change_stack *undo_stack, *redo_stack;
 
-  struct text *clipboard;
+  struct text clipboard;
 
   char quit;
 };

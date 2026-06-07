@@ -70,35 +70,29 @@ static inline void v_x(struct bee *bee){
 }
 
 static inline void bee_copy(struct bee *bee){
-  // TODO: copy to clipboard and exit visual mode
-  int y = bee->y0;
-  int yy = bee->y;
-  int x = bee->bx0;
-  int xx = bee->bx;
+  int y, yy, x, xx;
+  y = bee->y0; yy = bee->y; x = bee->bx0; xx = bee->bx;
+  if(y>yy || (y==yy && x > xx)){
+    SWAP_INT(y,yy); SWAP_INT(x, xx);
+  }
 
   // in case bx is past eol
   x = MIN(MAX(0,(int)strlen(bee->buf.p[y])-1), x);
   xx = MIN(MAX(0,(int)strlen(bee->buf.p[yy])-1), xx);
 
-  text_destroy(bee->clipboard);
-  bee->clipboard = text_create();
-  int len = bee->clipboard->len = yy - y + 1;
-  bee->clipboard->p = malloc(len * sizeof(char*));
+  text_deinit(&bee->clipboard);
+  text_init(&bee->clipboard);
 
-  if(len == 1)
-    bee->clipboard->p[0] = str_copy_range(bee->buf.p[y], x, xx + 1);
-  else
-    for(int i=0; i<len; i++) {
-      if(i==0){
-        bee->clipboard->p[i] = str_copy_from(bee->buf.p[y+i], x);
-      }
-      else if(i==len-1){
-        bee->clipboard->p[i] = str_copy_n(bee->buf.p[y+i], xx);
-      }
-      else
-        bee->clipboard->p[i] = str_copy(bee->buf.p[y+i]);
+  // TODO: this could be refactor into:
+  // text_copy_range_into(&bee->buf, &bee->clipboard, y, x, yy, xx);
+  // if a function with the following signature would exist:
+  // void text_copy_range_into(struct text *from, struct text *to, int, int, int, int);
+  struct text *copied = text_copy_range(&bee->buf, y, x, yy, xx);
+  bee->clipboard.p = copied->p;
+  bee->clipboard.len = copied->len;
+  free(copied);
 
-    }
+  exit_visual_mode(bee);
 }
 
 void visual_read_key(struct bee *bee){

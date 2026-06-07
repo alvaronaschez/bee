@@ -65,14 +65,12 @@ static inline void bee_init(struct bee *bee){
 }
 
 static inline void bee_destroy(struct bee *bee){
-  for(int i=0; i<bee->buf.len; i++)
-    free(bee->buf.p[i]);
-  free(bee->buf.p);
+  text_deinit(&bee->buf);
   if(bee->filename)
     free(bee->filename);
   change_stack_destroy(bee->undo_stack);
   change_stack_destroy(bee->redo_stack);
-  text_destroy(bee->clipboard);
+  text_deinit(&bee->clipboard);
 }
 
 int bee_run(const char* filename){
