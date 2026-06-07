@@ -194,6 +194,8 @@ void print_screen(const struct bee *bee) {
   for(int j=0; j<SCREEN_HEIGHT; j++){
     // print file content
     if(bee->mode == VISUAL){
+      // TODO: improve code repetition
+      tb_hide_cursor();
       int y0, y1, bx0, bx1, vx0, vx1;
       y0 = bee->y0; y1 = bee->y; bx0 = bee->bx0; bx1 = bee->bx; vx0 = bee->vx0; vx1 = bee->vx;
       if(y0>y1 || (y0==y1 && bx0 > bx1)){
@@ -201,19 +203,30 @@ void print_screen(const struct bee *bee) {
       }
       int y = vs[j].y_file;
       if(y0 <= y && y <= y1){
-        // TODO
         if(y0 < y && y < y1)
           tb_print(MARGIN_LEN, j, BG_COLOR, FG_COLOR, vs[j].p);
         else if(y0 == y && y == y1){
           tb_print(MARGIN_LEN, j, FG_COLOR, BG_COLOR, vs[j].p);
-          tb_print(MARGIN_LEN+bx0, j, BG_COLOR, FG_COLOR, vs[j].p+bx0);
-          tb_print(MARGIN_LEN+bx1, j, FG_COLOR, BG_COLOR, vs[j].p+bx1);
+          tb_print(MARGIN_LEN+vx0, j, BG_COLOR, FG_COLOR, vs[j].p+bx0);
+          if(vs[j].p[bx1] == '\0') {
+            tb_print(MARGIN_LEN+vx1, j, BG_COLOR, FG_COLOR, " ");
+          } else {
+            int v_len = columnlen(vs[j].p+bx1, vx1);
+            int b_len = bytelen(vs[j].p+bx1);
+            tb_print(MARGIN_LEN+vx1+v_len, j, FG_COLOR, BG_COLOR, vs[j].p+bx1+b_len);
+          }
         } else if(y0 == y){
           tb_print(MARGIN_LEN, j, FG_COLOR, BG_COLOR, vs[j].p);
-          tb_print(MARGIN_LEN+bx0, j, BG_COLOR, FG_COLOR, vs[j].p+bx0);
+          tb_print(MARGIN_LEN+vx0, j, BG_COLOR, FG_COLOR, vs[j].p+bx0);
         } else if(y1 == y){
           tb_print(MARGIN_LEN, j, BG_COLOR, FG_COLOR, vs[j].p);
-          tb_print(MARGIN_LEN+bx1, j, FG_COLOR, BG_COLOR, vs[j].p+bx1);
+          if(vs[j].p[bx1] == '\0') {
+            tb_print(MARGIN_LEN+vx1, j, BG_COLOR, FG_COLOR, " ");
+          } else {
+            int v_len = columnlen(vs[j].p+bx1, vx1);
+            int b_len = bytelen(vs[j].p+bx1);
+            tb_print(MARGIN_LEN+vx1+v_len, j, FG_COLOR, BG_COLOR, vs[j].p+bx1+b_len);
+          }
         }
       }
       else
@@ -234,21 +247,23 @@ void print_screen(const struct bee *bee) {
   print_footer(bee);
 
   /* cursor */
-  int cursor_col;
-  if(bee->mode != INSERT){
-    cursor_col= bx_to_vx(bee->bx, 0, bee->buf.p[bee->y]);
-  } else if(bee->ins_buf.len == 1) {
-    char *aux = malloc(bee->bx + strlen(bee->ins_buf.p[0]) +1);
-    memcpy(aux, bee->buf.p[bee->y], bee->bx);
-    aux[bee->bx] = '\0';
-    strcat(aux, bee->ins_buf.p[0]);
-    cursor_col = bx_to_vx(strlen(aux), 0, aux);
-    free(aux);
-  } else {
-    char *last_insert_line = bee->ins_buf.p[bee->ins_buf.len-1];
-    cursor_col = bx_to_vx(strlen(last_insert_line), 0, last_insert_line);
+  if(bee->mode != VISUAL){
+    int cursor_col;
+    if(bee->mode != INSERT){
+      cursor_col= bx_to_vx(bee->bx, 0, bee->buf.p[bee->y]);
+    } else if(bee->ins_buf.len == 1) {
+      char *aux = malloc(bee->bx + strlen(bee->ins_buf.p[0]) +1);
+      memcpy(aux, bee->buf.p[bee->y], bee->bx);
+      aux[bee->bx] = '\0';
+      strcat(aux, bee->ins_buf.p[0]);
+      cursor_col = bx_to_vx(strlen(aux), 0, aux);
+      free(aux);
+    } else {
+      char *last_insert_line = bee->ins_buf.p[bee->ins_buf.len-1];
+      cursor_col = bx_to_vx(strlen(last_insert_line), 0, last_insert_line);
+    }
+    tb_set_cursor( cursor_col % SCREEN_WIDTH + MARGIN_LEN, m);
   }
-  tb_set_cursor( cursor_col % SCREEN_WIDTH + MARGIN_LEN, m);
 
   tb_present();
 

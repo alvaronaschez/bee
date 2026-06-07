@@ -4,6 +4,8 @@
 
 #include "normal_mode.h"
 #include "string.h"
+#include "text.h"
+#include "util.h"
 
 void to_visual_mode(struct bee *bee){
   bee->y0 = bee->y;
@@ -25,6 +27,10 @@ static inline void exit_visual_mode(struct bee  *bee){
   bee->mode = NORMAL;
 }
 
+// TODO: it fails when cursor tail > cursor head
+// implement something like: if ct > ch -> swap(ct, ch)
+// something similar is done in print.c:199
+// it is too complex anyway, we should refactor it to make it readable
 static inline void v_x(struct bee *bee){
   // clear redo stack
   change_stack_destroy(bee->redo_stack);
@@ -57,8 +63,36 @@ static inline void v_x(struct bee *bee){
   exit_visual_mode(bee);
 }
 
-static inline void bee_copy(struct bee *bee, int y, int x, int yy, int xx){
+static inline void bee_copy(struct bee *bee){
   // TODO: copy to clipboard and exit visual mode
+  int y = bee->y0;
+  int yy = bee->y;
+  int x = bee->bx0;
+  int xx = bee->bx;
+
+  // in case bx is past eol
+  x = MIN(MAX(0,(int)strlen(bee->buf.p[y])-1), x);
+  xx = MIN(MAX(0,(int)strlen(bee->buf.p[yy])-1), xx);
+
+  text_destroy(bee->clipboard);
+  bee->clipboard = text_create();
+  int len = bee->clipboard->len = yy - y + 1;
+  bee->clipboard->p = malloc(len * sizeof(char*));
+
+  if(len == 1)
+    bee->clipboard->p[0] = str_copy_range(bee->buf.p[y], x, xx + 1);
+  else
+    for(int i=0; i<len; i++) {
+      if(i==0){
+        bee->clipboard->p[i] = str_copy_from(bee->buf.p[y+i], x);
+      }
+      else if(i==len-1){
+        bee->clipboard->p[i] = str_copy_n(bee->buf.p[y+i], xx);
+      }
+      else
+        bee->clipboard->p[i] = str_copy(bee->buf.p[y+i]);
+
+    }
 }
 
 void visual_read_key(struct bee *bee){
@@ -78,7 +112,7 @@ void visual_read_key(struct bee *bee){
   case 'd':
     v_x(bee); break;
   case 'y':
-    bee_copy(bee, bee->y0, bee->bx0, bee->y, bee->bx);
+    bee_copy(bee);
   }
   else if(ev.key!=0) switch(ev.key){
   case TB_KEY_ESC:
