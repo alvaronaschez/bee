@@ -1,11 +1,22 @@
 #include "print.h"
 
-#include "bee.h"
+#define TB_IMPL
 #include "termbox2.h"
+
+#include "bee.h"
 #include "text.h"
 #include "util.h"
 #include "string.h"
 #include <stdbool.h>
+
+void term_init(void){
+  tb_init();
+  tb_set_clear_attrs(FG_COLOR, BG_COLOR);
+}
+
+void term_shutdown(void){
+  tb_shutdown();
+}
 
 struct vs_line {
   int y_file, bx_file, vx_file;

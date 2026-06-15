@@ -1,7 +1,7 @@
 #include "bee.h"
 
-#define TB_IMPL
-#include "termbox2.h"
+//#define TB_IMPL
+//#include "termbox2.h"
 
 #include "text.h"
 #include "string.h"
@@ -87,17 +87,14 @@ int bee_run(const char* filename){
 
   bee.buf.p = load_file(bee.filename, &bee.buf.len);
 
-  tb_init();
-  tb_set_clear_attrs(FG_COLOR, BG_COLOR);
-  //tb_set_input_mode(TB_INPUT_ESC); // default
-  //tb_set_input_mode(TB_INPUT_ALT);
+  term_init();
 
   while(!bee.quit){
     print_screen(&bee);
     read_key(&bee);
   }
 
-  tb_shutdown();
+  term_shutdown();
   bee_destroy(&bee);
 
   return 0;
