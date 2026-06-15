@@ -137,3 +137,16 @@ void bee_move_cursor_up(struct bee *bee, int n){
   // adjust column position
   vx_to_bx(bee->buf.p[YY], bee->vxgoal, &bee->bx, &bee->vx);
 }
+
+void bee_to_last_line(struct bee *bee){
+  bee-> y = bee->buf.len - 1;
+  // adjust column position
+  vx_to_bx(bee->buf.p[YY], bee->vxgoal, &bee->bx, &bee->vx);
+}
+
+void bee_to_first_line(struct bee *bee){
+  bee-> y = 0;
+  // adjust column position
+  vx_to_bx(bee->buf.p[YY], bee->vxgoal, &bee->bx, &bee->vx);
+}
+

@@ -1,5 +1,6 @@
 #include "normal_mode.h"
 
+#include "bee.h"
 #include "termbox2.h"
 
 #include "string.h"
@@ -106,7 +107,7 @@ void normal_read_key(struct bee *bee){
   else if(ev.ch!=0) switch(ev.ch){
   case 'Z':
     tb_poll_event(&ev);
-    if(ev.ch == 'Q') 
+    if(ev.ch == 'Q')
       bee->quit = 1;
     break;
   case 'i':
@@ -123,6 +124,13 @@ void normal_read_key(struct bee *bee){
     bee_move_cursor_up(bee, 1); break;
   case 'l':
     bee_move_cursor_right(bee); break;
+  case 'g':
+    tb_poll_event(&ev);
+    if(ev.ch == 'g')
+      bee_to_first_line(bee);
+    break;
+  case 'G':
+    bee_to_last_line(bee); break;
   case 'x':
     n_x(bee); break;
   case 'u':

@@ -90,5 +90,8 @@ void bee_move_cursor_down(struct bee *bee, int n);
 void bee_move_cursor_left(struct bee *bee);
 void bee_move_cursor_right(struct bee *bee);
 
+void bee_to_first_line(struct bee *bee);
+void bee_to_last_line(struct bee *bee);
+
 #endif
 
