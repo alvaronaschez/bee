@@ -6,11 +6,6 @@
 #include "text.h"
 #include "string.h"
 #include "file.h"
-#include "print.h"
-#include "normal_mode.h"
-#include "insert_mode.h"
-#include "command_mode.h"
-#include "visual_mode.h"
 #include "util.h"
 
 #include <stdio.h>

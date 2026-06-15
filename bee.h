@@ -93,5 +93,25 @@ void bee_move_cursor_right(struct bee *bee);
 void bee_to_first_line(struct bee *bee);
 void bee_to_last_line(struct bee *bee);
 
+// normal_mode
+void normal_read_key(struct bee*);
+
+// insert_mode
+void insert_read_key(struct bee*);
+void to_insert_mode(struct bee* bee);
+
+// command_mode
+void command_read_key(struct bee*);
+void to_command_mode(struct bee* bee);
+
+// visual_mode
+void visual_read_key(struct bee*);
+void to_visual_mode(struct bee* bee);
+
+// print
+void print_screen(const struct bee*);
+void term_init(void);
+void term_shutdown(void);
+
 #endif
 

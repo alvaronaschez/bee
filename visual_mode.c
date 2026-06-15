@@ -1,8 +1,7 @@
-#include "visual_mode.h"
+#include "bee.h"
 
 #include "termbox2.h"
 
-#include "normal_mode.h"
 #include "string.h"
 #include "text.h"
 #include "util.h"

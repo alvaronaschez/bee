@@ -1,4 +1,4 @@
-#include "insert_mode.h"
+#include "bee.h"
 
 #include "termbox2.h"
 

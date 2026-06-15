@@ -1,13 +1,9 @@
-#include "normal_mode.h"
+#include "bee.h"
 
 #include "bee.h"
 #include "termbox2.h"
 
 #include "string.h"
-
-#include "insert_mode.h"
-#include "command_mode.h"
-#include "visual_mode.h"
 
 static inline void n_x(struct bee *bee){
   change_stack_destroy(bee->redo_stack);
